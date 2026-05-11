@@ -1,0 +1,53 @@
+export interface Stock {
+  id: string;
+  code: string;
+  name: string;
+  shares: number;
+  holdingCost: number;
+  targetPrice: number;
+  targetMarketValue: number;
+  marketCap: number;
+  buyPrices: number[];
+  buyShares: number[];
+  takeProfitPrices: number[];
+  takeProfitShares: number[];
+}
+
+export interface StockWithPrice extends Stock {
+  currentPrice: number;
+  timestamp: number;
+}
+
+export interface StockCalculations {
+  currentMarketValue: number;
+  targetMarketValue: number;
+  targetPrice: number;
+  dropToTargetPercent: number;
+  costTotal: number;
+  profitLoss: number;
+  profitLossPercent: number;
+}
+
+export interface Fund {
+  id: string;
+  code: string;
+  name: string;
+  holdingAmount: number;
+  holdingCost: number;
+}
+
+export interface FundWithPrice extends Fund {
+  currentNAV: number;
+  accumulatedNAV: number;
+  dailyChange: number;
+  dailyChangePercent: number;
+  timestamp: number;
+}
+
+export interface FundCalculations {
+  shares: number;
+  marketValue: number;
+  costTotal: number;
+  profitLoss: number;
+  profitLossPercent: number;
+}

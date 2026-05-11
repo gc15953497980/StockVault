@@ -1,0 +1,19 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 4396,
+    proxy: {
+      '/api/sina': {
+        target: 'https://hq.sinajs.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn',
+        },
+      },
+    },
+  },
+})

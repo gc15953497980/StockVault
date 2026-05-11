@@ -1,0 +1,104 @@
+.wrapper {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: right;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.table th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #666;
+  position: sticky;
+  top: 0;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table th:last-child,
+.table td:last-child {
+  text-align: center;
+}
+
+.fundName {
+  font-weight: 600;
+  color: #222;
+  display: block;
+}
+
+.fundCode {
+  font-size: 11px;
+  color: #999;
+}
+
+.up {
+  color: #e83929;
+  font-weight: 600;
+}
+
+.down {
+  color: #1ca051;
+  font-weight: 600;
+}
+
+.priceUp {
+  color: #e83929;
+  font-weight: 600;
+}
+
+.time {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.btnEdit,
+.btnDel {
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin: 0 2px;
+}
+
+.btnEdit {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.btnDel {
+  background: #fce8e6;
+  color: #e83929;
+}
+
+.btnEdit:hover {
+  background: #d2e3fc;
+}
+
+.btnDel:hover {
+  background: #f8d7da;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 15px;
+}
