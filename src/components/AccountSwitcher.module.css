@@ -1,0 +1,49 @@
+.container {
+  position: relative; display: flex; align-items: center; gap: 4px;
+}
+
+.select {
+  padding: 4px 8px; border: 1px solid var(--border-heavy); border-radius: 6px;
+  background: var(--surface); color: var(--text); font-size: 12px;
+  cursor: pointer;
+}
+
+.manageBtn {
+  padding: 4px 8px; border: 1px dashed var(--primary); background: none;
+  color: var(--primary); border-radius: 4px; cursor: pointer; font-size: 12px;
+  font-weight: bold;
+}
+
+.dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 8px;
+  background: var(--surface); border-radius: 10px; padding: 12px;
+  box-shadow: var(--shadow-heavy); z-index: 50; min-width: 220px;
+}
+
+.addRow { display: flex; gap: 6px; margin-bottom: 10px; }
+
+.input {
+  flex: 1; padding: 6px 8px; border: 1px solid var(--border-heavy); border-radius: 6px;
+  background: var(--surface); color: var(--text); font-size: 12px;
+}
+
+.addBtn {
+  padding: 6px 12px; background: var(--primary); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
+}
+
+.list { margin-bottom: 10px; }
+
+.item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+
+.delBtn {
+  border: none; background: none; color: var(--up); cursor: pointer; font-size: 11px;
+}
+
+.closeBtn {
+  width: 100%; padding: 6px; background: var(--btn-default-bg); color: var(--btn-default-text);
+  border: 1px solid var(--border-heavy); border-radius: 6px; cursor: pointer; font-size: 12px;
+}

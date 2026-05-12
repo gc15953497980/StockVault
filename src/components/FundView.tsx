@@ -7,9 +7,15 @@ import Toolbar from './Toolbar';
 import PortfolioChart from './PortfolioChart';
 import ValueTrendChart from './ValueTrendChart';
 import SectorChart from './SectorChart';
+import ProfitAttribution from './ProfitAttribution';
+import ConcentrationPanel from './ConcentrationPanel';
+import BenchmarkChart from './BenchmarkChart';
+import DcaCalculator from './DcaCalculator';
+import StrategySimulator from './StrategySimulator';
 import { fundsToCSV, downloadCSV } from '../utils/csv';
 import { requestNotificationPermission, checkFundAlerts } from '../utils/notifications';
 import { useValueHistoryStore } from '../store/useValueHistoryStore';
+import { usePnlCalendarStore } from '../store/usePnlCalendarStore';
 import type { Fund } from '../types';
 import styles from './FundView.module.css';
 
@@ -19,10 +25,11 @@ export default function FundView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [hideNames, setHideNames] = useState(false);
+  const [showDca, setShowDca] = useState(false);
+  const [showSim, setShowSim] = useState(false);
+  const [filterTag, setFilterTag] = useState<string>('');
 
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+  useEffect(() => { requestNotificationPermission(); }, []);
 
   const editingFund = editingId ? funds.find((f) => f.id === editingId) ?? null : null;
 
@@ -46,10 +53,7 @@ export default function FundView() {
     a.download = `stockvault_funds_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }, [funds]);
 
   const handleExportCSV = useCallback(() => {
@@ -70,14 +74,13 @@ export default function FundView() {
             const raw = item as Partial<Fund>;
             if (typeof raw.code !== 'string') continue;
             const fund: Fund = {
-              id: typeof raw.id === 'string' && raw.id.trim().length > 0
-                ? raw.id
-                : Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+              id: typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
               code: raw.code.trim(),
               name: typeof raw.name === 'string' ? raw.name.trim() : '',
               sector: typeof raw.sector === 'string' ? raw.sector.trim() : '',
               holdingAmount: typeof raw.holdingAmount === 'number' ? raw.holdingAmount : 0,
               holdingCost: typeof raw.holdingCost === 'number' ? raw.holdingCost : 0,
+              tags: Array.isArray(raw.tags) ? raw.tags.filter((v): v is string => typeof v === 'string') : [],
             };
             if (fund.code) normalized.push(fund);
           }
@@ -106,10 +109,13 @@ export default function FundView() {
     const { funds: f, navs: n } = useFundStore.getState();
     checkFundAlerts(f, n);
     useValueHistoryStore.getState().recordSnapshot();
+    usePnlCalendarStore.getState().recordToday();
     refreshHistoryNAVs();
   }, [refreshPrices, refreshHistoryNAVs]);
 
   const hasData = funds.length > 0;
+
+  const allTags = [...new Set(funds.flatMap(f => f.tags))];
 
   return (
     <>
@@ -124,7 +130,35 @@ export default function FundView() {
         error={error}
         count={funds.length}
         onRefresh={handleRefresh}
+        showDca={() => setShowDca(true)}
+        showSim={() => setShowSim(true)}
       />
+
+      {allTags.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>标签筛选:</span>
+          <button
+            onClick={() => setFilterTag('')}
+            style={{
+              padding: '2px 8px', border: '1px solid var(--border-heavy)', borderRadius: 12,
+              background: filterTag === '' ? 'var(--primary)' : 'var(--surface)',
+              color: filterTag === '' ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 11,
+            }}
+          >全部</button>
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
+              style={{
+                padding: '2px 8px', border: '1px solid var(--border-heavy)', borderRadius: 12,
+                background: filterTag === tag ? 'var(--primary)' : 'var(--surface)',
+                color: filterTag === tag ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 11,
+              }}
+            >{tag}</button>
+          ))}
+        </div>
+      )}
+
       {hasData && (
         <div className={styles.charts}>
           <PortfolioChart
@@ -140,6 +174,20 @@ export default function FundView() {
           <SectorChart />
         </div>
       )}
+
+      {hasData && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <ProfitAttribution type="funds" />
+          <ConcentrationPanel />
+        </div>
+      )}
+
+      {hasData && (
+        <div style={{ marginBottom: 20 }}>
+          <BenchmarkChart />
+        </div>
+      )}
+
       <div className={styles.toggleRow}>
         <button
           className={styles.toggleBtn}
@@ -160,10 +208,14 @@ export default function FundView() {
           )}
         </button>
       </div>
-      <FundTable onEdit={handleEdit} onDelete={handleDelete} hideNames={hideNames} />
+      <FundTable onEdit={handleEdit} onDelete={handleDelete} hideNames={hideNames} filterTag={filterTag} />
+
       {showForm && (
         <FundForm key={editingId ?? 'new-fund'} fund={editingFund} onSave={handleSave} onClose={handleClose} />
       )}
+
+      {showDca && <DcaCalculator onClose={() => setShowDca(false)} />}
+      {showSim && <StrategySimulator onClose={() => setShowSim(false)} />}
     </>
   );
 }

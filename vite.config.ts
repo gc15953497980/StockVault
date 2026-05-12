@@ -22,6 +22,11 @@ export default defineConfig({
           Referer: 'https://fundf10.eastmoney.com/',
         },
       },
+      '/api/benchmark': {
+        target: 'https://push2his.eastmoney.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/benchmark/, ''),
+      },
     },
   },
 })

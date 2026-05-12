@@ -2,18 +2,21 @@ import { useState, useMemo } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { calcFund, formatMoney, formatPercent } from '../utils/api';
 import { FundTxPanel, FundDividendPanel } from './TxPanel';
+import NotesPanel from './NotesPanel';
+import DividendCompare from './DividendCompare';
 import styles from './FundTable.module.css';
 
 interface Props {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   hideNames?: boolean;
+  filterTag?: string;
 }
 
 type SortField = 'code' | 'sector' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'avgDownside' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
+export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Props) {
   const funds = useFundStore((s) => s.funds);
   const navs = useFundStore((s) => s.navs);
   const accumulatedNAVs = useFundStore((s) => s.accumulatedNAVs);
@@ -23,28 +26,26 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showDivCompare, setShowDivCompare] = useState<string | null>(null);
+
+  const filtered = useMemo(() =>
+    filterTag ? funds.filter(f => f.tags.includes(filterTag)) : funds,
+    [funds, filterTag]
+  );
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
   };
 
   const toggleExpand = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setExpanded((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
   const sortArrow = <span className={styles.sortArrow}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
 
   const sorted = useMemo(() => {
-    const arr = [...funds];
+    const arr = [...filtered];
     arr.sort((a, b) => {
       const navA = navs[a.code] ?? 0;
       const navB = navs[b.code] ?? 0;
@@ -72,108 +73,118 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
         case 'time': va = tsA; vb = tsB; break;
         default: va = a.code.localeCompare(b.code); vb = 0; break;
       }
-      if (sortField === 'code' || sortField === 'sector') {
-        return sortDir === 'asc' ? (va as unknown as number) : (vb as unknown as number);
-      }
+      if (sortField === 'code' || sortField === 'sector') return sortDir === 'asc' ? (va as unknown as number) : (vb as unknown as number);
       return sortDir === 'asc' ? va - vb : vb - va;
     });
     return arr;
-  }, [funds, navs, accumulatedNAVs, dailyChangePercents, avgDownsides, timestamps, sortField, sortDir]);
+  }, [filtered, navs, accumulatedNAVs, dailyChangePercents, avgDownsides, timestamps, sortField, sortDir]);
 
   if (funds.length === 0) {
     return <div className={styles.empty}>暂无基金数据，点击上方"添加基金"开始</div>;
   }
 
   return (
-    <div className={styles.wrapper}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th onClick={() => handleSort('code')}>基金 {sortField === 'code' && sortArrow}</th>
-            <th onClick={() => handleSort('sector')}>行业 {sortField === 'sector' && sortArrow}</th>
-            <th onClick={() => handleSort('nav')}>最新净值 {sortField === 'nav' && sortArrow}</th>
-            <th onClick={() => handleSort('accumulatedNAV')}>累计净值 {sortField === 'accumulatedNAV' && sortArrow}</th>
-            <th onClick={() => handleSort('dailyChange')}>日涨跌幅 {sortField === 'dailyChange' && sortArrow}</th>
-            <th onClick={() => handleSort('avgDownside')}>近6月日均跌幅 {sortField === 'avgDownside' && sortArrow}</th>
-            <th onClick={() => handleSort('holdingCost')}>持仓成本 {sortField === 'holdingCost' && sortArrow}</th>
-            <th onClick={() => handleSort('holdingAmount')}>持有金额 {sortField === 'holdingAmount' && sortArrow}</th>
-            <th onClick={() => handleSort('shares')}>持有份额 {sortField === 'shares' && sortArrow}</th>
-            <th onClick={() => handleSort('marketValue')}>持有市值 {sortField === 'marketValue' && sortArrow}</th>
-            <th onClick={() => handleSort('profitLoss')}>浮动盈亏 {sortField === 'profitLoss' && sortArrow}</th>
-            <th onClick={() => handleSort('profitLossPercent')}>盈亏比例 {sortField === 'profitLossPercent' && sortArrow}</th>
-            <th onClick={() => handleSort('time')}>更新时间 {sortField === 'time' && sortArrow}</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((fund) => {
-            const nav = navs[fund.code] ?? 0;
-            const accNAV = accumulatedNAVs[fund.code] ?? 0;
-            const dcp = dailyChangePercents[fund.code];
-            const calc = calcFund(nav, fund.holdingCost, fund.holdingAmount);
-            const ts = timestamps[fund.code];
-            const timeStr = ts ? new Date(ts).toLocaleTimeString('zh-CN') : '-';
+    <>
+      <div className={styles.wrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th onClick={() => handleSort('code')}>基金 {sortField === 'code' && sortArrow}</th>
+              <th onClick={() => handleSort('sector')}>行业 {sortField === 'sector' && sortArrow}</th>
+              <th>标签</th>
+              <th onClick={() => handleSort('nav')}>最新净值 {sortField === 'nav' && sortArrow}</th>
+              <th onClick={() => handleSort('accumulatedNAV')}>累计净值 {sortField === 'accumulatedNAV' && sortArrow}</th>
+              <th onClick={() => handleSort('dailyChange')}>日涨跌幅 {sortField === 'dailyChange' && sortArrow}</th>
+              <th onClick={() => handleSort('avgDownside')}>近6月日均跌幅 {sortField === 'avgDownside' && sortArrow}</th>
+              <th onClick={() => handleSort('holdingCost')}>持仓成本 {sortField === 'holdingCost' && sortArrow}</th>
+              <th onClick={() => handleSort('holdingAmount')}>持有金额 {sortField === 'holdingAmount' && sortArrow}</th>
+              <th onClick={() => handleSort('shares')}>持有份额 {sortField === 'shares' && sortArrow}</th>
+              <th onClick={() => handleSort('marketValue')}>持有市值 {sortField === 'marketValue' && sortArrow}</th>
+              <th onClick={() => handleSort('profitLoss')}>浮动盈亏 {sortField === 'profitLoss' && sortArrow}</th>
+              <th onClick={() => handleSort('profitLossPercent')}>盈亏比例 {sortField === 'profitLossPercent' && sortArrow}</th>
+              <th onClick={() => handleSort('time')}>更新时间 {sortField === 'time' && sortArrow}</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((fund) => {
+              const nav = navs[fund.code] ?? 0;
+              const accNAV = accumulatedNAVs[fund.code] ?? 0;
+              const dcp = dailyChangePercents[fund.code];
+              const calc = calcFund(nav, fund.holdingCost, fund.holdingAmount);
+              const ts = timestamps[fund.code];
+              const timeStr = ts ? new Date(ts).toLocaleTimeString('zh-CN') : '-';
 
-            return (
-              <>
-                <tr key={fund.id}>
-                  <td>
-                    <button className={styles.detailToggle} onClick={() => toggleExpand(fund.id)}>
-                      {expanded.has(fund.id) ? '▼' : '▶'}
-                    </button>
-                    <span className={styles.fundName}>
-                      {hideNames ? '***' : (fund.name || fund.code)}
-                    </span>
-                    <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
-                  </td>
-                  <td>{fund.sector || '-'}</td>
-                  <td className={nav > 0 ? styles.priceUp : ''}>{nav > 0 ? nav.toFixed(4) : '-'}</td>
-                  <td>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</td>
-                  <td className={dcp !== undefined ? (dcp >= 0 ? styles.up : styles.down) : ''}>
-                    {dcp !== undefined ? (dcp >= 0 ? '+' : '') + dcp.toFixed(2) + '%' : '-'}
-                  </td>
-                  <td className={avgDownsides[fund.code] !== undefined ? styles.down : ''}>
-                    {avgDownsides[fund.code] !== undefined ? '-' + avgDownsides[fund.code].toFixed(2) + '%' : '-'}
-                  </td>
-                  <td>{fund.holdingCost > 0 ? fund.holdingCost.toFixed(4) : '-'}</td>
-                  <td>{fund.holdingAmount > 0 ? formatMoney(fund.holdingAmount) : '-'}</td>
-                  <td>{calc.shares > 0 ? calc.shares.toFixed(2) : '-'}</td>
-                  <td>{formatMoney(calc.marketValue)}</td>
-                  <td className={calc.profitLoss >= 0 ? styles.up : styles.down}>{formatMoney(calc.profitLoss)}</td>
-                  <td className={calc.profitLossPercent >= 0 ? styles.up : styles.down}>{formatPercent(calc.profitLossPercent)}</td>
-                  <td className={styles.time}>{timeStr}</td>
-                  <td>
-                    <button className={styles.btnEdit} onClick={() => onEdit(fund.id)}>编辑</button>
-                    <button className={styles.btnDel} onClick={() => onDelete(fund.id)}>删除</button>
-                  </td>
-                </tr>
-                {expanded.has(fund.id) && (
-                  <tr className={styles.detailRow}>
-                    <td colSpan={14}>
-                      <div className={styles.detailPanel}>
-                        <div className={styles.detailSection}>
-                          <span className={styles.detailLabel}>持有金额:</span>
-                          <span className={styles.detailValue}>{fund.holdingAmount > 0 ? formatMoney(fund.holdingAmount) : '-'}</span>
-                          <span className={styles.detailLabel}>成本净值:</span>
-                          <span className={styles.detailValue}>{fund.holdingCost > 0 ? fund.holdingCost.toFixed(4) : '-'}</span>
-                        </div>
-                        <div className={styles.detailSection}>
-                          <span className={styles.detailLabel}>持有份额:</span>
-                          <span className={styles.detailValue}>{calc.shares > 0 ? calc.shares.toFixed(2) : '-'}</span>
-                          <span className={styles.detailLabel}>累计净值:</span>
-                          <span className={styles.detailValue}>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</span>
-                        </div>
-                        <FundTxPanel fundId={fund.id} />
-                        <FundDividendPanel fundId={fund.id} />
-                      </div>
+              return (
+                <>
+                  <tr key={fund.id}>
+                    <td>
+                      <button className={styles.detailToggle} onClick={() => toggleExpand(fund.id)}>
+                        {expanded.has(fund.id) ? '▼' : '▶'}
+                      </button>
+                      <span className={styles.fundName}>{hideNames ? '***' : (fund.name || fund.code)}</span>
+                      <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
+                    </td>
+                    <td>{fund.sector || '-'}</td>
+                    <td className={styles.tagsCell}>
+                      {fund.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}
+                    </td>
+                    <td className={nav > 0 ? styles.priceUp : ''}>{nav > 0 ? nav.toFixed(4) : '-'}</td>
+                    <td>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</td>
+                    <td className={dcp !== undefined ? (dcp >= 0 ? styles.up : styles.down) : ''}>
+                      {dcp !== undefined ? (dcp >= 0 ? '+' : '') + dcp.toFixed(2) + '%' : '-'}
+                    </td>
+                    <td className={avgDownsides[fund.code] !== undefined ? styles.down : ''}>
+                      {avgDownsides[fund.code] !== undefined ? '-' + avgDownsides[fund.code].toFixed(2) + '%' : '-'}
+                    </td>
+                    <td>{fund.holdingCost > 0 ? fund.holdingCost.toFixed(4) : '-'}</td>
+                    <td>{fund.holdingAmount > 0 ? formatMoney(fund.holdingAmount) : '-'}</td>
+                    <td>{calc.shares > 0 ? calc.shares.toFixed(2) : '-'}</td>
+                    <td>{formatMoney(calc.marketValue)}</td>
+                    <td className={calc.profitLoss >= 0 ? styles.up : styles.down}>{formatMoney(calc.profitLoss)}</td>
+                    <td className={calc.profitLossPercent >= 0 ? styles.up : styles.down}>{formatPercent(calc.profitLossPercent)}</td>
+                    <td className={styles.time}>{timeStr}</td>
+                    <td>
+                      <button className={styles.btnEdit} onClick={() => onEdit(fund.id)}>编辑</button>
+                      <button className={styles.btnDel} onClick={() => onDelete(fund.id)}>删除</button>
                     </td>
                   </tr>
-                )}
-              </>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  {expanded.has(fund.id) && (
+                    <tr className={styles.detailRow}>
+                      <td colSpan={16}>
+                        <div className={styles.detailPanel}>
+                          <div className={styles.detailSection}>
+                            <span className={styles.detailLabel}>持有金额:</span>
+                            <span className={styles.detailValue}>{fund.holdingAmount > 0 ? formatMoney(fund.holdingAmount) : '-'}</span>
+                            <span className={styles.detailLabel}>成本净值:</span>
+                            <span className={styles.detailValue}>{fund.holdingCost > 0 ? fund.holdingCost.toFixed(4) : '-'}</span>
+                          </div>
+                          <div className={styles.detailSection}>
+                            <span className={styles.detailLabel}>持有份额:</span>
+                            <span className={styles.detailValue}>{calc.shares > 0 ? calc.shares.toFixed(2) : '-'}</span>
+                            <span className={styles.detailLabel}>累计净值:</span>
+                            <span className={styles.detailValue}>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <button style={{ border: '1px solid var(--primary)', background: 'none', color: 'var(--primary)', padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                              onClick={() => setShowDivCompare(fund.id)}>
+                              分红方式对比
+                            </button>
+                          </div>
+                          <FundTxPanel fundId={fund.id} />
+                          <FundDividendPanel fundId={fund.id} />
+                          <NotesPanel targetId={fund.id} label={fund.name || fund.code} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {showDivCompare && <DividendCompare fundId={showDivCompare} onClose={() => setShowDivCompare(null)} />}
+    </>
   );
 }

@@ -1,0 +1,76 @@
+import { create } from 'zustand';
+import type { Account } from '../types';
+import { pushToGist } from '../utils/gistSync';
+
+function autoSyncPush() {
+  if (localStorage.getItem('stockvault_sync_auto') === '1') {
+    pushToGist().catch(() => {});
+  }
+}
+
+interface AccountStore {
+  accounts: Account[];
+  activeAccountId: string;
+  addAccount: (name: string) => void;
+  deleteAccount: (id: string) => void;
+  setActiveAccount: (id: string) => void;
+  setAccounts: (accounts: Account[]) => void;
+}
+
+const STORAGE_KEY = 'stockvault_accounts';
+const ACTIVE_KEY = 'stockvault_active_account';
+
+function load(): Account[] {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    return d ? JSON.parse(d) : [];
+  } catch { return []; }
+}
+
+function save(accounts: Account[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts)); } catch { /* ignore */ }
+  autoSyncPush();
+}
+
+function getActive(): string {
+  try { return localStorage.getItem(ACTIVE_KEY) || 'default'; } catch { return 'default'; }
+}
+
+function setActive(id: string) {
+  localStorage.setItem(ACTIVE_KEY, id);
+}
+
+export const useAccountStore = create<AccountStore>((set, get) => ({
+  accounts: load(),
+  activeAccountId: getActive(),
+
+  addAccount: (name) => {
+    const id = Date.now().toString(36);
+    const accounts = [...get().accounts, { id, name, createdAt: new Date().toISOString() }];
+    save(accounts);
+    set({ accounts });
+  },
+
+  deleteAccount: (id) => {
+    const accounts = get().accounts.filter(a => a.id !== id);
+    save(accounts);
+    const activeId = get().activeAccountId;
+    if (activeId === id) {
+      const newActive = accounts.length > 0 ? accounts[0].id : 'default';
+      setActive(newActive);
+      set({ accounts, activeAccountId: newActive });
+    } else {
+      set({ accounts });
+    }
+  },
+
+  setActiveAccount: (id) => {
+    setActive(id);
+    set({ activeAccountId: id });
+  },
+
+  setAccounts: (accounts) => {
+    save(accounts);
+    set({ accounts });
+  },
+}));

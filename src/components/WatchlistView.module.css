@@ -1,0 +1,77 @@
+.toolbar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+
+.btn {
+  padding: 8px 18px; background: var(--primary); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+
+.count { font-size: 12px; color: var(--text-muted); }
+
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px;
+}
+
+.table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+
+.table th {
+  background: var(--th-bg); color: var(--text-secondary); padding: 10px 12px;
+  text-align: left; border-bottom: 2px solid var(--border-heavy); font-weight: 600;
+}
+
+.table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+}
+
+.stockTag { color: var(--up); }
+.fundTag { color: var(--primary); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+.note { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+
+.btnSmall {
+  padding: 2px 6px; border: 1px solid var(--border-heavy); background: var(--btn-default-bg);
+  color: var(--btn-default-text); border-radius: 3px; cursor: pointer; font-size: 11px;
+  margin-right: 4px;
+}
+
+.btnDel {
+  padding: 2px 6px; border: none; background: none; color: var(--up);
+  cursor: pointer; font-size: 11px;
+}
+
+.formOverlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+
+.formModal {
+  background: var(--surface); border-radius: 12px; padding: 20px; width: 420px;
+  box-shadow: var(--shadow-heavy);
+}
+
+.formModal h3 { margin: 0 0 16px; color: var(--text); }
+
+.formRow { display: flex; gap: 12px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.field label { font-size: 12px; color: var(--text-secondary); }
+.field input, .field select {
+  padding: 6px 10px; border: 1px solid var(--border-heavy); border-radius: 6px;
+  background: var(--surface); color: var(--text); font-size: 13px;
+}
+
+.formActions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+.btnSave {
+  padding: 8px 20px; background: var(--primary); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+
+.btnCancel {
+  padding: 8px 20px; background: var(--btn-default-bg); color: var(--btn-default-text);
+  border: 1px solid var(--border-heavy); border-radius: 6px; cursor: pointer; font-size: 13px;
+}

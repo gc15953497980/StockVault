@@ -1,4 +1,4 @@
-import type { StockCalculations, FundCalculations, FundNavPoint } from '../types';
+import type { StockCalculations, FundCalculations, FundNavPoint, BenchmarkPoint, Market } from '../types';
 
 const SINA_API = '/api/sina/list=';
 
@@ -27,6 +27,7 @@ async function fetchGBK(url: string): Promise<string> {
 export async function fetchStockPrices(
   codes: string[]
 ): Promise<Record<string, PriceResult>> {
+  if (codes.length === 0) return {};
   const url = SINA_API + codes.join(',');
   const text = await fetchGBK(url);
 
@@ -42,6 +43,43 @@ export async function fetchStockPrices(
       marketCap: parseFloat(fields[44]) || 0,
     };
   }
+  return result;
+}
+
+// HK stock: rt_hkXXXXX (e.g. rt_hk00700), US stock: gb_baba
+export async function fetchForeignPrices(
+  codes: { code: string; market: Market }[]
+): Promise<Record<string, { price: number; changePercent: number }>> {
+  const result: Record<string, { price: number; changePercent: number }> = {};
+  const sinaCodes = codes.map(c => {
+    if (c.market === 'hk') return 'rt_hk' + c.code.replace('hk', '');
+    if (c.market === 'us') return 'gb_' + c.code.replace('us_', '');
+    return c.code;
+  });
+  if (sinaCodes.length === 0) return result;
+
+  try {
+    const url = SINA_API + sinaCodes.join(',');
+    const text = await fetchGBK(url);
+    const regex = /var hq_str_(\w+)="([^"]*)"/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const rawCode = match[1];
+      const fields = match[2].split(',');
+      const price = parseFloat(fields[3]) || 0;
+      const prevClose = parseFloat(fields[2]) || price;
+      const changePercent = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+      // Map back to our code
+      for (const c of codes) {
+        const mapped = c.market === 'hk' ? 'rt_hk' + c.code.replace('hk', '')
+          : c.market === 'us' ? 'gb_' + c.code.replace('us_', '')
+          : c.code;
+        if (mapped === rawCode) {
+          result[c.code] = { price, changePercent };
+        }
+      }
+    }
+  } catch { /* ignore */ }
   return result;
 }
 
@@ -86,12 +124,10 @@ export function calcStock(
 }
 
 // Fund API: Sina fund response fields
-// 0=name, 1=current NAV, 2=accumulated NAV, 3=previous NAV,
-// 4=previous accumulated NAV, 5=daily change, 6=daily change %,
-// 7=subscribe status, 8=redeem status, 9=discount
 export async function fetchFundPrices(
   codes: string[]
 ): Promise<Record<string, FundPriceResult>> {
+  if (codes.length === 0) return {};
   const fundCodes = codes.map((c) => 'f_' + c).join(',');
   const url = SINA_API + fundCodes;
   const text = await fetchGBK(url);
@@ -128,8 +164,10 @@ export function calcFund(
   return { shares, marketValue, costTotal, profitLoss, profitLossPercent };
 }
 
-export function toStockCode(input: string): string {
+export function toStockCode(input: string, market: Market = 'a'): string {
   let code = input.trim();
+  if (market === 'hk') return code.startsWith('hk') ? code : 'hk' + code;
+  if (market === 'us') return code.startsWith('us_') ? code : 'us_' + code;
   if (/^\d{6}$/.test(code)) {
     const first = code[0];
     if (first === '6' || first === '5') {
@@ -156,7 +194,7 @@ export function formatPercent(v: number): string {
 }
 
 const FUND_HISTORY_CACHE_PREFIX = 'stockvault_fundnav_';
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24小时
+const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 function getCachedHistory(code: string): FundNavPoint[] | null {
   try {
@@ -177,17 +215,21 @@ function setCachedHistory(code: string, data: FundNavPoint[]) {
   );
 }
 
-export async function fetchFundHistoryNAV(code: string): Promise<FundNavPoint[]> {
+export async function fetchFundHistoryNAV(
+  code: string,
+  monthsBack: number = 6,
+  pageSize: number = 200
+): Promise<FundNavPoint[]> {
   const cached = getCachedHistory(code);
-  if (cached) return cached;
+  if (cached && monthsBack === 6) return cached;
 
   const now = new Date();
-  const sixMonthsAgo = new Date(now);
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const startDate = sixMonthsAgo.toISOString().split('T')[0];
+  const start = new Date(now);
+  start.setMonth(start.getMonth() - monthsBack);
+  const startDate = start.toISOString().split('T')[0];
   const endDate = now.toISOString().split('T')[0];
 
-  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=200&startDate=${startDate}&endDate=${endDate}`;
+  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=${pageSize}&startDate=${startDate}&endDate=${endDate}`;
 
   try {
     const res = await fetch(url);
@@ -206,7 +248,7 @@ export async function fetchFundHistoryNAV(code: string): Promise<FundNavPoint[]>
       }))
       .sort((a: FundNavPoint, b: FundNavPoint) => a.date.localeCompare(b.date));
 
-    if (result.length > 0) {
+    if (result.length > 0 && monthsBack === 6) {
       setCachedHistory(code, result);
     }
     return result;
@@ -229,4 +271,55 @@ export function calcAvgDownside(history: FundNavPoint[]): number {
   }
 
   return downDays > 0 ? totalDownside / downDays : 0;
+}
+
+// Benchmark API: fetch index K-line data from eastmoney
+const BENCHMARK_CACHE_PREFIX = 'stockvault_benchmark_';
+
+function getBenchmarkCache(code: string): BenchmarkPoint[] | null {
+  try {
+    const raw = localStorage.getItem(BENCHMARK_CACHE_PREFIX + code);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+}
+
+function setBenchmarkCache(code: string, data: BenchmarkPoint[]) {
+  localStorage.setItem(BENCHMARK_CACHE_PREFIX + code, JSON.stringify({ data, ts: Date.now() }));
+}
+
+export async function fetchBenchmarkData(code: string): Promise<BenchmarkPoint[]> {
+  const cached = getBenchmarkCache(code);
+  if (cached) return cached;
+
+  // Determine market: 1=SH, 0=SZ
+  const secid = code.startsWith('6') || code.startsWith('5') ? `1.${code}` : `0.${code}`;
+  try {
+    const res = await fetch(`/api/benchmark/kline?secid=${secid}&lmt=200`);
+    const json = await res.json();
+    if (json?.data?.klines) {
+      const result: BenchmarkPoint[] = json.data.klines
+        .map((line: string) => {
+          const parts = line.split(',');
+          return { date: parts[0], value: parseFloat(parts[2]) };
+        })
+        .filter((p: BenchmarkPoint) => p.value > 0);
+      if (result.length > 0) setBenchmarkCache(code, result);
+      return result;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+// Market label helper
+export function marketLabel(market: Market): string {
+  switch (market) {
+    case 'hk': return '港股';
+    case 'us': return '美股';
+    default: return 'A股';
+  }
 }

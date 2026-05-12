@@ -1,0 +1,64 @@
+.container { margin-top: 12px; }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+
+.addBtn {
+  border: 1px dashed var(--primary); background: none; color: var(--primary);
+  padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+}
+
+.form {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;
+  padding: 10px; background: var(--bg); border-radius: 8px;
+}
+
+.field {
+  padding: 5px 8px; border: 1px solid var(--border-heavy); border-radius: 4px;
+  font-size: 12px; background: var(--surface); color: var(--text);
+}
+
+.textarea {
+  padding: 5px 8px; border: 1px solid var(--border-heavy); border-radius: 4px;
+  font-size: 12px; background: var(--surface); color: var(--text); resize: vertical;
+  font-family: inherit;
+}
+
+.saveBtn {
+  align-self: flex-end;
+  padding: 4px 14px; background: var(--primary); color: #fff;
+  border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+
+.list {
+  max-height: 250px; overflow-y: auto;
+}
+
+.note {
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+
+.note:last-child { border-bottom: none; }
+
+.noteHeader {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.noteDate { font-size: 11px; color: var(--text-muted); min-width: 85px; }
+.noteTitle { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }
+
+.delBtn {
+  border: none; background: none; color: var(--text-muted);
+  cursor: pointer; font-size: 10px; padding: 0 2px;
+}
+
+.noteContent {
+  margin-top: 4px; font-size: 12px; color: var(--text-secondary);
+  line-height: 1.5; white-space: pre-wrap; padding-left: 93px;
+}

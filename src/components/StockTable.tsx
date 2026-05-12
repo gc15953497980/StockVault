@@ -1,18 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useStockStore } from '../store/useStockStore';
-import { calcStock, formatMoney, formatPercent } from '../utils/api';
+import { calcStock, formatMoney, formatPercent, marketLabel } from '../utils/api';
 import { StockTxPanel, StockDividendPanel } from './TxPanel';
 import styles from './StockTable.module.css';
 
 interface Props {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  filterTag?: string;
 }
 
 type SortField = 'code' | 'price' | 'cost' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'targetPrice' | 'dropToTarget' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function StockTable({ onEdit, onDelete }: Props) {
+export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
   const stocks = useStockStore((s) => s.stocks);
   const prices = useStockStore((s) => s.prices);
   const marketCaps = useStockStore((s) => s.marketCaps);
@@ -21,30 +22,26 @@ export default function StockTable({ onEdit, onDelete }: Props) {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
+  const filtered = useMemo(() =>
+    filterTag ? stocks.filter(s => s.tags.includes(filterTag)) : stocks,
+    [stocks, filterTag]
+  );
+
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
   };
 
   const toggleExpand = (id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setExpanded((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
   const sortArrow = <span className={styles.sortArrow}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
-
   const maxBuyBatches = Math.max(1, ...stocks.map((s) => s.buyPrices.length));
   const maxTpBatches = Math.max(1, ...stocks.map((s) => s.takeProfitPrices.length));
 
   const sorted = useMemo(() => {
-    const arr = [...stocks];
+    const arr = [...filtered];
     arr.sort((a, b) => {
       const cpA = prices[a.code] ?? 0;
       const cpB = prices[b.code] ?? 0;
@@ -65,11 +62,11 @@ export default function StockTable({ onEdit, onDelete }: Props) {
         case 'time': va = tsA; vb = tsB; break;
         default: va = a.code.localeCompare(b.code); vb = 0; break;
       }
-      if (sortField === 'code') return sortDir === 'asc' ? va as unknown as number : vb as unknown as number;
+      if (sortField === 'code') return sortDir === 'asc' ? (va as unknown as number) : (vb as unknown as number);
       return sortDir === 'asc' ? va - vb : vb - va;
     });
     return arr;
-  }, [stocks, prices, timestamps, sortField, sortDir]);
+  }, [filtered, prices, timestamps, sortField, sortDir]);
 
   if (stocks.length === 0) {
     return <div className={styles.empty}>暂无持仓数据，点击上方"添加股票"开始</div>;
@@ -81,6 +78,8 @@ export default function StockTable({ onEdit, onDelete }: Props) {
         <thead>
           <tr>
             <th onClick={() => handleSort('code')}>股票 {sortField === 'code' && sortArrow}</th>
+            <th>市场</th>
+            <th>标签</th>
             <th onClick={() => handleSort('price')}>现价 {sortField === 'price' && sortArrow}</th>
             <th onClick={() => handleSort('cost')}>持仓成本 {sortField === 'cost' && sortArrow}</th>
             <th onClick={() => handleSort('shares')}>持仓数量 {sortField === 'shares' && sortArrow}</th>
@@ -90,15 +89,9 @@ export default function StockTable({ onEdit, onDelete }: Props) {
             <th onClick={() => handleSort('targetPrice')}>目标价 {sortField === 'targetPrice' && sortArrow}</th>
             <th onClick={() => handleSort('dropToTarget')}>距目标跌幅 {sortField === 'dropToTarget' && sortArrow}</th>
             <th>目标市值</th>
-            {Array.from({ length: maxBuyBatches }, (_, i) => (
-              <th key={`buy${i}`}>买{i + 1}</th>
-            ))}
-            {Array.from({ length: maxBuyBatches }, (_, i) => (
-              <th key={`buyS${i}`}>买{i + 1}股数</th>
-            ))}
-            {Array.from({ length: maxTpBatches }, (_, i) => (
-              <th key={`tp${i}`}>止盈{i + 1}价 / 占比</th>
-            ))}
+            {Array.from({ length: maxBuyBatches }, (_, i) => <th key={`buy${i}`}>买{i + 1}</th>)}
+            {Array.from({ length: maxBuyBatches }, (_, i) => <th key={`buyS${i}`}>买{i + 1}股数</th>)}
+            {Array.from({ length: maxTpBatches }, (_, i) => <th key={`tp${i}`}>止盈{i + 1}价 / 占比</th>)}
             <th onClick={() => handleSort('time')}>更新时间 {sortField === 'time' && sortArrow}</th>
             <th>操作</th>
           </tr>
@@ -120,6 +113,10 @@ export default function StockTable({ onEdit, onDelete }: Props) {
                     </button>
                     <span className={styles.stockName}>{stock.name}</span>
                     <span className={styles.stockCode}>{stock.code}</span>
+                  </td>
+                  <td className={styles.market}>{marketLabel(stock.market)}</td>
+                  <td className={styles.tagsCell}>
+                    {stock.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}
                   </td>
                   <td className={cp > 0 ? styles.priceUp : ''}>{cp > 0 ? cp.toFixed(2) : '-'}</td>
                   <td>{stock.holdingCost.toFixed(2)}</td>
@@ -143,11 +140,7 @@ export default function StockTable({ onEdit, onDelete }: Props) {
                     const tpShares = stock.takeProfitShares[i];
                     const hasTp = tpPrice !== undefined && tpPrice > 0;
                     const pct = hasTp && tpShares > 0 && stock.shares > 0 ? ((tpShares / stock.shares) * 100).toFixed(1) : null;
-                    return (
-                      <td key={`tp${i}`} className={styles.tp}>
-                        {hasTp ? `${tpPrice.toFixed(2)}${pct ? ` (${pct}%)` : ''}` : '-'}
-                      </td>
-                    );
+                    return <td key={`tp${i}`} className={styles.tp}>{hasTp ? `${tpPrice.toFixed(2)}${pct ? ` (${pct}%)` : ''}` : '-'}</td>;
                   })}
                   <td className={styles.time}>{timeStr}</td>
                   <td>
@@ -157,7 +150,7 @@ export default function StockTable({ onEdit, onDelete }: Props) {
                 </tr>
                 {expanded.has(stock.id) && (
                   <tr className={styles.detailRow}>
-                    <td colSpan={11 + maxBuyBatches * 2 + maxTpBatches}>
+                    <td colSpan={14 + maxBuyBatches * 2 + maxTpBatches}>
                       <div className={styles.detailPanel}>
                         <div className={styles.detailSection}>
                           <span className={styles.detailLabel}>目标价:</span>

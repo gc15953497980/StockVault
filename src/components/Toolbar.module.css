@@ -9,9 +9,39 @@
 }
 
 .left,
+.center,
 .right {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.autoRefresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.autoRefresh input[type="checkbox"] {
+  accent-color: var(--primary);
+  margin-right: 2px;
+}
+
+.intervalSelect {
+  padding: 3px 6px;
+  border: 1px solid var(--border-heavy);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+}
+
+.nextRefresh {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .btnPrimary,

@@ -1,0 +1,89 @@
+.container {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  min-width: 80px;
+  text-align: center;
+}
+
+.navBtn {
+  border: 1px solid var(--border-heavy);
+  background: var(--btn-default-bg);
+  color: var(--text);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.navBtn:hover { background: var(--btn-default-hover); }
+
+.monthPnl {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+.weekDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.weekDay {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  position: relative;
+}
+
+.cell.empty { background: transparent; }
+
+.dayNum {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legendItem { display: flex; align-items: center; gap: 4px; }
+.legendDot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

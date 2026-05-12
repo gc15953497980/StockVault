@@ -160,6 +160,21 @@
   white-space: nowrap;
 }
 
+.tagsCell {
+  max-width: 100px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 1px 2px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .detailValue {
   color: var(--text);
   font-weight: 500;

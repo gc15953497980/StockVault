@@ -18,6 +18,10 @@ interface GistData {
   stockDivs?: unknown;
   fundDivs?: unknown;
   valueHistory?: unknown;
+  watchlist?: unknown;
+  notes?: unknown;
+  pnlCalendar?: unknown;
+  accounts?: unknown;
   updatedAt: string;
 }
 
@@ -47,6 +51,10 @@ function getAllData(): GistData {
     stockDivs: safeJSON(localStorage.getItem('stockvault_stock_divs')),
     fundDivs: safeJSON(localStorage.getItem('stockvault_fund_divs')),
     valueHistory: safeJSON(localStorage.getItem('stockvault_value_history')),
+    watchlist: safeJSON(localStorage.getItem('stockvault_watchlist')),
+    notes: safeJSON(localStorage.getItem('stockvault_notes')),
+    pnlCalendar: safeJSON(localStorage.getItem('stockvault_pnl_calendar')),
+    accounts: safeJSON(localStorage.getItem('stockvault_accounts')),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -128,6 +136,10 @@ export async function pullFromGist(): Promise<{ success: boolean; message: strin
     mergeData('stockvault_stock_divs', remote.stockDivs);
     mergeData('stockvault_fund_divs', remote.fundDivs);
     mergeData('stockvault_value_history', remote.valueHistory);
+    mergeData('stockvault_watchlist', remote.watchlist);
+    mergeData('stockvault_notes', remote.notes);
+    mergeData('stockvault_pnl_calendar', remote.pnlCalendar);
+    mergeData('stockvault_accounts', remote.accounts);
 
     return { success: true, message: '拉取成功，数据已更新', data: remote };
   } catch (e) {

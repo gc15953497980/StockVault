@@ -1,0 +1,31 @@
+.overlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+
+.modal {
+  background: var(--surface); border-radius: 12px; padding: 24px; width: 320px;
+  box-shadow: var(--shadow-heavy); text-align: center;
+}
+
+.modal h3 { margin: 0 0 16px; color: var(--text); }
+
+.list { text-align: left; }
+
+.row {
+  display: flex; align-items: center; gap: 12px; padding: 6px 0;
+  font-size: 13px; color: var(--text);
+}
+
+.kbd {
+  display: inline-block; padding: 2px 8px;
+  background: var(--bg); border: 1px solid var(--border-heavy);
+  border-radius: 4px; font-size: 12px; font-weight: 600;
+  color: var(--primary); min-width: 28px; text-align: center;
+}
+
+.close {
+  margin-top: 16px; padding: 8px 24px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
+}

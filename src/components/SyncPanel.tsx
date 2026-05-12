@@ -4,6 +4,10 @@ import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
 import { useTxStore } from '../store/useTxStore';
 import { useValueHistoryStore } from '../store/useValueHistoryStore';
+import { useWatchlistStore } from '../store/useWatchlistStore';
+import { useNotesStore } from '../store/useNotesStore';
+import { usePnlCalendarStore } from '../store/usePnlCalendarStore';
+import { useAccountStore } from '../store/useAccountStore';
 import styles from './SyncPanel.module.css';
 
 interface Props {
@@ -70,22 +74,33 @@ export default function SyncPanel({ onDataChanged }: Props) {
     setLoading(false);
     showStatus(result.success ? 'success' : 'error', result.message);
     if (result.success && result.data) {
-      // Update all stores with pulled data
       const d = result.data;
       if (Array.isArray(d.stocks)) {
-useStockStore.getState().setStocks(d.stocks as any);
+        useStockStore.getState().setStocks(d.stocks as any);
       }
       if (Array.isArray(d.funds)) {
-useFundStore.getState().setFunds(d.funds as any);
+        useFundStore.getState().setFunds(d.funds as any);
       }
       useTxStore.getState().setAllData({
-stockTxs: d.stockTxs as any,
-fundTxs: d.fundTxs as any,
-stockDividends: d.stockDivs as any,
-fundDividends: d.fundDivs as any,
+        stockTxs: d.stockTxs as any,
+        fundTxs: d.fundTxs as any,
+        stockDividends: d.stockDivs as any,
+        fundDividends: d.fundDivs as any,
       });
       if (Array.isArray(d.valueHistory)) {
-useValueHistoryStore.getState().setHistory(d.valueHistory as any);
+        useValueHistoryStore.getState().setHistory(d.valueHistory as any);
+      }
+      if (Array.isArray(d.watchlist)) {
+        useWatchlistStore.getState().setItems(d.watchlist as any);
+      }
+      if (d.notes && typeof d.notes === 'object') {
+        useNotesStore.getState().setNotes(d.notes as any);
+      }
+      if (Array.isArray(d.pnlCalendar)) {
+        usePnlCalendarStore.getState().setRecords(d.pnlCalendar as any);
+      }
+      if (Array.isArray(d.accounts)) {
+        useAccountStore.getState().setAccounts(d.accounts as any);
       }
       onDataChanged();
     }
@@ -110,7 +125,7 @@ useValueHistoryStore.getState().setHistory(d.valueHistory as any);
   return (
     <>
       <button className={styles.syncBtn} onClick={() => setOpen(true)} title="云同步">
-        🔄 同步
+        ↩ 同步
       </button>
 
       {open && (

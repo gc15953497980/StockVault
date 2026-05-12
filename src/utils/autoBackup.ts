@@ -9,6 +9,8 @@ function doBackup() {
       'stockvault_stock_txs', 'stockvault_fund_txs',
       'stockvault_stock_divs', 'stockvault_fund_divs',
       'stockvault_value_history',
+      'stockvault_watchlist', 'stockvault_notes',
+      'stockvault_pnl_calendar', 'stockvault_accounts',
     ];
     const obj: Record<string, unknown> = {};
     for (const key of keys) {

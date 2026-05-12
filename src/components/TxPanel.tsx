@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useTxStore } from '../store/useTxStore';
+import GridTradingPanel from './GridTradingPanel';
+import NotesPanel from './NotesPanel';
 
 // --- Stock Transaction Panel ---
 export function StockTxPanel({ stockId }: { stockId: string }) {
@@ -12,6 +14,8 @@ export function StockTxPanel({ stockId }: { stockId: string }) {
   const [price, setPrice] = useState('');
   const [shares, setShares] = useState('');
 
+  const regularTxs = txs.filter(tx => tx.type === 'buy' || tx.type === 'sell');
+
   const handleAdd = () => {
     const p = parseFloat(price);
     const s = parseInt(shares, 10);
@@ -21,40 +25,44 @@ export function StockTxPanel({ stockId }: { stockId: string }) {
   };
 
   return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>交易记录</span>
-        <button onClick={() => setShowForm(!showForm)} style={btnStyle}>
-          {showForm ? '取消' : '+ 添加'}
-        </button>
+    <>
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>交易记录</span>
+          <button onClick={() => setShowForm(!showForm)} style={btnStyle}>
+            {showForm ? '取消' : '+ 添加'}
+          </button>
+        </div>
+        {showForm && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
+            <select value={type} onChange={(e) => setType(e.target.value as 'buy' | 'sell')} style={inputStyle}>
+              <option value="buy">买入</option>
+              <option value="sell">卖出</option>
+            </select>
+            <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="价格" style={{ ...inputStyle, width: 80 }} />
+            <input type="number" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="股数" style={{ ...inputStyle, width: 80 }} />
+            <button onClick={handleAdd} style={btnPrimaryStyle}>保存</button>
+          </div>
+        )}
+        {regularTxs.length > 0 && (
+          <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+            {regularTxs.map((tx) => (
+              <div key={tx.id} style={{ display: 'flex', gap: 12, fontSize: 12, padding: '2px 0', color: 'var(--text-secondary)' }}>
+                <span>{tx.date}</span>
+                <span style={{ color: tx.type === 'buy' ? 'var(--up)' : 'var(--down)' }}>{tx.type === 'buy' ? '买入' : '卖出'}</span>
+                <span>{tx.price.toFixed(2)}</span>
+                <span>{tx.shares}股</span>
+                <span style={{ color: 'var(--text)' }}>{(tx.price * tx.shares).toFixed(2)}</span>
+                <button onClick={() => deleteStockTx(stockId, tx.id)} style={delBtnStyle}>删</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {showForm && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
-          <select value={type} onChange={(e) => setType(e.target.value as 'buy' | 'sell')} style={inputStyle}>
-            <option value="buy">买入</option>
-            <option value="sell">卖出</option>
-          </select>
-          <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="价格" style={{ ...inputStyle, width: 80 }} />
-          <input type="number" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="股数" style={{ ...inputStyle, width: 80 }} />
-          <button onClick={handleAdd} style={btnPrimaryStyle}>保存</button>
-        </div>
-      )}
-      {txs.length > 0 && (
-        <div style={{ maxHeight: 120, overflowY: 'auto' }}>
-          {txs.map((tx) => (
-            <div key={tx.id} style={{ display: 'flex', gap: 12, fontSize: 12, padding: '2px 0', color: 'var(--text-secondary)' }}>
-              <span>{tx.date}</span>
-              <span style={{ color: tx.type === 'buy' ? 'var(--up)' : 'var(--down)' }}>{tx.type === 'buy' ? '买入' : '卖出'}</span>
-              <span>{tx.price.toFixed(2)}</span>
-              <span>{tx.shares}股</span>
-              <span style={{ color: 'var(--text)' }}>{(tx.price * tx.shares).toFixed(2)}</span>
-              <button onClick={() => deleteStockTx(stockId, tx.id)} style={delBtnStyle}>删</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      <GridTradingPanel stockId={stockId} />
+      <NotesPanel targetId={stockId} label="股票" />
+    </>
   );
 }
 

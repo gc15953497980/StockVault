@@ -1,0 +1,47 @@
+.overlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+
+.modal {
+  background: var(--surface); border-radius: 12px; padding: 24px; width: 620px;
+  max-height: 85vh; overflow-y: auto; box-shadow: var(--shadow-heavy);
+}
+
+.title { margin: 0 0 16px; font-size: 16px; color: var(--text); }
+
+.form { margin-bottom: 16px; }
+
+.row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px; flex-wrap: wrap; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--text-secondary); }
+.field input, .field select {
+  padding: 6px 10px; border: 1px solid var(--border-heavy); border-radius: 6px;
+  background: var(--surface); color: var(--text); font-size: 13px;
+}
+
+.btnCalc {
+  padding: 7px 20px; background: var(--primary); color: #fff;
+  border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.btnCalc:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.resultGrid { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.resultCard {
+  flex: 1; min-width: 120px; background: var(--bg); border-radius: 8px;
+  padding: 12px; text-align: center;
+}
+.rLabel { font-size: 11px; color: var(--text-muted); }
+.rValue { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 4px; }
+
+.compare { text-align: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+.actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btnClose {
+  padding: 8px 20px; background: var(--btn-default-bg); color: var(--btn-default-text);
+  border: 1px solid var(--border-heavy); border-radius: 6px; cursor: pointer; font-size: 13px;
+}
