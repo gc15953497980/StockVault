@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# StockVault
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A股持仓管理工具，同时管理股票和基金持仓，支持实时行情、图表分析、交易记录与云同步。
 
-Currently, two official plugins are available:
+## 功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **股票持仓** — 从新浪财经获取实时价格，支持多批次买入价、止盈价和目标价设定
+- **基金持仓** — 实时净值、累计净值、日涨跌幅展示，以及近6月日均跌幅统计
+- **图表分析** — 持仓饼图、市值趋势折线图（保留最近180天）
+- **交易记录** — 为每只股票/基金记录买入卖出交易，以及现金/红利再投分红
+- **表格排序** — 点击表头即可按各列排序（代码、净值、涨跌幅、盈亏等）
+- **暗色模式** — 支持亮色/暗色主题切换，跟随系统偏好
+- **数据导入导出** — JSON / CSV 格式导入导出
+- **价格提醒** — 浏览器桌面通知：目标价、止盈价、净值下跌/盈利提醒
+- **隐私模式** — 一键隐藏基金名称和代码
+- **自动备份** — 每12小时自动下载 JSON 备份文件
+- **GitHub Gist 云同步** — 创建私有 Gist 同步数据到云端，支持推/拉
 
-## React Compiler
+## 技术栈
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [React 19](https://react.dev) + [TypeScript](https://www.typescriptlang.org/)
+- [Vite 8](https://vitejs.dev) 开发与构建
+- [Zustand](https://zustand.docs.pmnd.rs/) 状态管理
+- [Recharts](https://recharts.org) 图表
+- CSS Modules 样式隔离
+- 新浪财经 API（股票/基金实时行情）+ 东方财富 API（基金历史净值）
 
-## Expanding the ESLint configuration
+## 开始
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# 安装依赖
+npm install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# 启动开发服务器（端口 4396）
+npm run dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# 构建
+npm run build
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 预览构建产物
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 使用说明
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. 点击"添加股票"或"添加基金"按钮录入持仓
+2. 点击"刷新行情"获取最新价格/净值
+3. 点击行首的 ▶ 展开详情面板，可查看计算指标及交易/分红记录
+4. 点击表头可切换排序
+5. 右上角可配置 GitHub Gist 云同步
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 数据存储
+
+所有数据存储在浏览器 localStorage 中，云同步通过 GitHub Gist 实现。可随时通过 JSON 导出功能备份数据。
+
+## License
+
+MIT
