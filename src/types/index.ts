@@ -43,9 +43,8 @@ export interface Fund {
 }
 
 export const SECTOR_OPTIONS = [
-  '科技', '消费', '医药', '新能源', '金融',
-  '军工', '制造', '周期', '债券', '混合',
-  '指数', '其他',
+  '科技', '消费', '医药', '金融', '债券',
+  '混合', '指数', '红利', '自由现金流', '家电',
 ] as const;
 
 export const TAG_PRESETS = [
