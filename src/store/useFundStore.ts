@@ -54,7 +54,9 @@ function loadFunds(): Fund[] {
 }
 
 function saveFunds(funds: Fund[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(funds));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(funds));
+  } catch { /* quota exceeded, ignore */ }
 }
 
 export const useFundStore = create<FundStore>((set, get) => ({

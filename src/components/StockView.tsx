@@ -55,8 +55,12 @@ export default function StockView() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `stockvault_stocks_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   }, [stocks]);
 
   const handleExportCSV = useCallback(() => {

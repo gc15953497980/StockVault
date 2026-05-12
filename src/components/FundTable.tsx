@@ -17,7 +17,6 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
   const funds = useFundStore((s) => s.funds);
   const navs = useFundStore((s) => s.navs);
   const accumulatedNAVs = useFundStore((s) => s.accumulatedNAVs);
-  const dailyChanges = useFundStore((s) => s.dailyChanges);
   const dailyChangePercents = useFundStore((s) => s.dailyChangePercents);
   const avgDownsides = useFundStore((s) => s.avgDownsides);
   const timestamps = useFundStore((s) => s.timestamps);

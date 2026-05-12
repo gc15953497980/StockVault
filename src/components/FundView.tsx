@@ -11,6 +11,7 @@ import { fundsToCSV, downloadCSV } from '../utils/csv';
 import { requestNotificationPermission, checkFundAlerts } from '../utils/notifications';
 import { useValueHistoryStore } from '../store/useValueHistoryStore';
 import type { Fund } from '../types';
+import styles from './FundView.module.css';
 
 export default function FundView() {
   const { funds, navs, accumulatedNAVs, avgDownsides, loading, error, addFund, setFunds, updateFund, deleteFund, refreshPrices, refreshHistoryNAVs } =
@@ -43,8 +44,12 @@ export default function FundView() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `stockvault_funds_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   }, [funds]);
 
   const handleExportCSV = useCallback(() => {
@@ -121,7 +126,7 @@ export default function FundView() {
         onRefresh={handleRefresh}
       />
       {hasData && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div className={styles.charts}>
           <PortfolioChart
             stocks={
               funds.map((f) => {
@@ -135,23 +140,11 @@ export default function FundView() {
           <SectorChart />
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+      <div className={styles.toggleRow}>
         <button
+          className={styles.toggleBtn}
           onClick={() => setHideNames((v) => !v)}
           title={hideNames ? '显示基金名称' : '隐藏基金名称'}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: 14,
-            padding: '4px 8px',
-            lineHeight: 1,
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
         >
           {hideNames ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Stock } from '../types';
 import { toStockCode } from '../utils/api';
 import styles from './StockForm.module.css';
@@ -104,8 +104,14 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
     });
   };
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>{stock ? '编辑股票' : '添加股票'}</h2>
         <form onSubmit={handleSubmit}>
@@ -146,7 +152,7 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
               <input
                 type="number"
                 value={form.shares || ''}
-                onChange={(e) => set('shares', parseInt(e.target.value) || 0)}
+                onChange={(e) => set('shares', parseInt(e.target.value, 10) || 0)}
                 placeholder="0"
               />
             </div>
@@ -206,7 +212,7 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
                 <input
                   type="number"
                   value={form.buyShares[i] || ''}
-                  onChange={(e) => updateBuyShares(i, parseInt(e.target.value) || 0)}
+                  onChange={(e) => updateBuyShares(i, parseInt(e.target.value, 10) || 0)}
                 />
               </div>
               <button
@@ -241,7 +247,7 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
                 <input
                   type="number"
                   value={form.takeProfitShares[i] || ''}
-                  onChange={(e) => updateTakeProfitShares(i, parseInt(e.target.value) || 0)}
+                  onChange={(e) => updateTakeProfitShares(i, parseInt(e.target.value, 10) || 0)}
                 />
               </div>
               <button

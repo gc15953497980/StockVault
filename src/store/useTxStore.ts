@@ -16,16 +16,18 @@ interface TxStore {
 
   addStockTx: (stockId: string, tx: StockTx) => void;
   deleteStockTx: (stockId: string, txId: string) => void;
-  updateStockHoldings: (stockId: string) => {
-    totalShares: number;
-    totalCost: number;
-  } | null;
   addFundTx: (fundId: string, tx: FundTx) => void;
   deleteFundTx: (fundId: string, txId: string) => void;
   addStockDividend: (stockId: string, d: StockDividend) => void;
   deleteStockDividend: (stockId: string, dId: string) => void;
   addFundDividend: (fundId: string, d: FundDividend) => void;
   deleteFundDividend: (fundId: string, dId: string) => void;
+  setAllData: (data: {
+    stockTxs?: Record<string, StockTx[]>;
+    fundTxs?: Record<string, FundTx[]>;
+    stockDividends?: Record<string, StockDividend[]>;
+    fundDividends?: Record<string, FundDividend[]>;
+  }) => void;
 }
 
 const STOCK_TX_KEY = 'stockvault_stock_txs';
@@ -41,7 +43,9 @@ function loadJSON<T>(key: string, fallback: T): T {
 }
 
 function saveJSON(key: string, data: unknown) {
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch { /* quota exceeded, ignore */ }
   autoSyncPush();
 }
 
@@ -64,28 +68,6 @@ export const useTxStore = create<TxStore>((set, get) => ({
     if (txs[stockId]) txs[stockId] = txs[stockId].filter((t) => t.id !== txId);
     saveJSON(STOCK_TX_KEY, txs);
     set({ stockTxs: txs });
-  },
-
-  updateStockHoldings: (stockId) => {
-    const txs = get().stockTxs[stockId] || [];
-    if (txs.length === 0) return null;
-    let totalShares = 0;
-    let totalCost = 0;
-    for (const tx of [...txs].reverse()) {
-      if (tx.type === 'buy') {
-        totalCost += tx.price * tx.shares;
-        totalShares += tx.shares;
-      } else {
-        if (totalShares > 0) {
-          const avgCost = totalCost / totalShares;
-          const sellShares = Math.min(tx.shares, totalShares);
-          totalShares -= sellShares;
-          totalCost = totalShares * avgCost;
-        }
-      }
-    }
-    if (totalShares <= 0) return null;
-    return { totalShares, totalCost };
   },
 
   addFundTx: (fundId, tx) => {
@@ -131,5 +113,14 @@ export const useTxStore = create<TxStore>((set, get) => ({
     if (divs[fundId]) divs[fundId] = divs[fundId].filter((d) => d.id !== dId);
     saveJSON(FUND_DIV_KEY, divs);
     set({ fundDividends: divs });
+  },
+
+  setAllData: (data) => {
+    const state: Partial<TxStore> = {};
+    if (data.stockTxs) { saveJSON(STOCK_TX_KEY, data.stockTxs); state.stockTxs = data.stockTxs; }
+    if (data.fundTxs) { saveJSON(FUND_TX_KEY, data.fundTxs); state.fundTxs = data.fundTxs; }
+    if (data.stockDividends) { saveJSON(STOCK_DIV_KEY, data.stockDividends); state.stockDividends = data.stockDividends; }
+    if (data.fundDividends) { saveJSON(FUND_DIV_KEY, data.fundDividends); state.fundDividends = data.fundDividends; }
+    if (Object.keys(state).length > 0) set(state as TxStore);
   },
 }));

@@ -87,7 +87,7 @@ export async function pushToGist(): Promise<{ success: boolean; message: string 
   }
 }
 
-export async function pullFromGist(): Promise<{ success: boolean; message: string }> {
+export async function pullFromGist(): Promise<{ success: boolean; message: string; data?: GistData }> {
   const config = getSyncConfig();
   if (!config) return { success: false, message: '未配置 GitHub 令牌' };
 
@@ -129,7 +129,7 @@ export async function pullFromGist(): Promise<{ success: boolean; message: strin
     mergeData('stockvault_fund_divs', remote.fundDivs);
     mergeData('stockvault_value_history', remote.valueHistory);
 
-    return { success: true, message: '拉取成功，数据已更新' };
+    return { success: true, message: '拉取成功，数据已更新', data: remote };
   } catch (e) {
     return { success: false, message: (e as Error).message };
   }

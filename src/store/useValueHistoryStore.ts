@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { useStockStore } from './useStockStore';
 import { useFundStore } from './useFundStore';
-import { calcStock } from '../utils/api';
 
 interface HistoryPoint {
   time: number;
@@ -14,6 +13,7 @@ interface ValueHistoryStore {
   history: HistoryPoint[];
   recordSnapshot: () => void;
   clearHistory: () => void;
+  setHistory: (history: HistoryPoint[]) => void;
 }
 
 const STORAGE_KEY = 'stockvault_value_history';
@@ -94,5 +94,10 @@ export const useValueHistoryStore = create<ValueHistoryStore>((set, get) => ({
   clearHistory: () => {
     set({ history: [] });
     saveHistory([]);
+  },
+
+  setHistory: (history) => {
+    saveHistory(history);
+    set({ history });
   },
 }));

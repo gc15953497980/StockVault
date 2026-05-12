@@ -1,18 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { getSyncConfig, saveSyncConfig, clearSyncConfig, pushToGist, pullFromGist, createGist } from '../utils/gistSync';
+import { useStockStore } from '../store/useStockStore';
+import { useFundStore } from '../store/useFundStore';
+import { useTxStore } from '../store/useTxStore';
+import { useValueHistoryStore } from '../store/useValueHistoryStore';
 import styles from './SyncPanel.module.css';
 
 interface Props {
   onDataChanged: () => void;
-}
-
-export function useSyncOnChange() {
-  const config = getSyncConfig();
-  return useCallback(() => {
-    if (config && localStorage.getItem('stockvault_sync_auto') === '1') {
-      pushToGist().catch(() => {});
-    }
-  }, [config?.gistId]);
 }
 
 export default function SyncPanel({ onDataChanged }: Props) {
@@ -74,7 +69,24 @@ export default function SyncPanel({ onDataChanged }: Props) {
     const result = await pullFromGist();
     setLoading(false);
     showStatus(result.success ? 'success' : 'error', result.message);
-    if (result.success && result.message.includes('拉取成功')) {
+    if (result.success && result.data) {
+      // Update all stores with pulled data
+      const d = result.data;
+      if (Array.isArray(d.stocks)) {
+useStockStore.getState().setStocks(d.stocks as any);
+      }
+      if (Array.isArray(d.funds)) {
+useFundStore.getState().setFunds(d.funds as any);
+      }
+      useTxStore.getState().setAllData({
+stockTxs: d.stockTxs as any,
+fundTxs: d.fundTxs as any,
+stockDividends: d.stockDivs as any,
+fundDividends: d.fundDivs as any,
+      });
+      if (Array.isArray(d.valueHistory)) {
+useValueHistoryStore.getState().setHistory(d.valueHistory as any);
+      }
       onDataChanged();
     }
   };

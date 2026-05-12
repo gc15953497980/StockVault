@@ -30,6 +30,7 @@ export default function Toolbar({
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) onImport(file);
+      input.remove();
     };
     input.click();
   };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Fund } from '../types';
 import { SECTOR_OPTIONS } from '../types';
 import { toFundCode } from '../utils/api';
@@ -35,8 +35,14 @@ export default function FundForm({ fund, onSave, onClose }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>{fund ? '编辑基金' : '添加基金'}</h2>
         <form onSubmit={handleSubmit}>

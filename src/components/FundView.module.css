@@ -1,0 +1,32 @@
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.toggleRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.toggleBtn {
+  background: none;
+  border: 1px solid var(--border-heavy);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  line-height: 1;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.toggleBtn:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}

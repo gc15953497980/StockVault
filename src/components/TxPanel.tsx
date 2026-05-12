@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTxStore } from '../store/useTxStore';
-import type { StockTx, FundTx, StockDividend, FundDividend } from '../types';
 
 // --- Stock Transaction Panel ---
 export function StockTxPanel({ stockId }: { stockId: string }) {
@@ -15,7 +14,7 @@ export function StockTxPanel({ stockId }: { stockId: string }) {
 
   const handleAdd = () => {
     const p = parseFloat(price);
-    const s = parseInt(shares);
+    const s = parseInt(shares, 10);
     if (!p || !s || p <= 0 || s <= 0) return;
     addStockTx(stockId, { id: Date.now().toString(36), date, type, price: p, shares: s });
     setPrice(''); setShares(''); setShowForm(false);

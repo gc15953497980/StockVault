@@ -204,7 +204,7 @@ export async function fetchFundHistoryNAV(code: string): Promise<FundNavPoint[]>
         nav: parseFloat(item.DWJZ),
         growthRate: item.JZZZL ? parseFloat(item.JZZZL) : 0,
       }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a: FundNavPoint, b: FundNavPoint) => a.date.localeCompare(b.date));
 
     if (result.length > 0) {
       setCachedHistory(code, result);

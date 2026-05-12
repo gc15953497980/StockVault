@@ -4,19 +4,29 @@ const BACKUP_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours
 
 function doBackup() {
   try {
-    const stocks = localStorage.getItem('stockvault_stocks');
-    const funds = localStorage.getItem('stockvault_funds');
+    const keys = [
+      'stockvault_stocks', 'stockvault_funds',
+      'stockvault_stock_txs', 'stockvault_fund_txs',
+      'stockvault_stock_divs', 'stockvault_fund_divs',
+      'stockvault_value_history',
+    ];
     const obj: Record<string, unknown> = {};
-    if (stocks) obj.stocks = JSON.parse(stocks);
-    if (funds) obj.funds = JSON.parse(funds);
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (raw) obj[key] = JSON.parse(raw);
+    }
     if (Object.keys(obj).length === 0) return;
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `stockvault_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   } catch { /* silent */ }
 }
 
