@@ -6,6 +6,7 @@ import FundForm from './FundForm';
 import Toolbar from './Toolbar';
 import PortfolioChart from './PortfolioChart';
 import ValueTrendChart from './ValueTrendChart';
+import SectorChart from './SectorChart';
 import { fundsToCSV, downloadCSV } from '../utils/csv';
 import { requestNotificationPermission, checkFundAlerts } from '../utils/notifications';
 import { useValueHistoryStore } from '../store/useValueHistoryStore';
@@ -69,6 +70,7 @@ export default function FundView() {
                 : Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
               code: raw.code.trim(),
               name: typeof raw.name === 'string' ? raw.name.trim() : '',
+              sector: typeof raw.sector === 'string' ? raw.sector.trim() : '',
               holdingAmount: typeof raw.holdingAmount === 'number' ? raw.holdingAmount : 0,
               holdingCost: typeof raw.holdingCost === 'number' ? raw.holdingCost : 0,
             };
@@ -119,7 +121,7 @@ export default function FundView() {
         onRefresh={handleRefresh}
       />
       {hasData && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
           <PortfolioChart
             stocks={
               funds.map((f) => {
@@ -130,6 +132,7 @@ export default function FundView() {
             }
           />
           <ValueTrendChart type="funds" />
+          <SectorChart />
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>

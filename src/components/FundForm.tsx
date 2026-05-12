@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Fund } from '../types';
+import { SECTOR_OPTIONS } from '../types';
 import { toFundCode } from '../utils/api';
 import styles from './FundForm.module.css';
 
@@ -14,6 +15,7 @@ function emptyFund(): Fund {
     id: '',
     code: '',
     name: '',
+    sector: '',
     holdingAmount: 0,
     holdingCost: 0,
   };
@@ -46,6 +48,19 @@ export default function FundForm({ fund, onSave, onClose }: Props) {
               placeholder="000001"
               required
             />
+          </div>
+
+          <div className={styles.field}>
+            <label>行业</label>
+            <select
+              value={form.sector}
+              onChange={(e) => setForm((prev) => ({ ...prev, sector: e.target.value }))}
+            >
+              <option value="">-- 选择行业 --</option>
+              {SECTOR_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
 
           <div className={styles.grid2}>

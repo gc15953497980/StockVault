@@ -10,7 +10,7 @@ interface Props {
   hideNames?: boolean;
 }
 
-type SortField = 'code' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'avgDownside' | 'time';
+type SortField = 'code' | 'sector' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'avgDownside' | 'time';
 type SortDir = 'asc' | 'desc';
 
 export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
@@ -69,10 +69,13 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
         case 'profitLoss': va = calcA.profitLoss; vb = calcB.profitLoss; break;
         case 'profitLossPercent': va = calcA.profitLossPercent; vb = calcB.profitLossPercent; break;
         case 'avgDownside': va = avgDownsides[a.code] ?? 0; vb = avgDownsides[b.code] ?? 0; break;
+        case 'sector': va = a.sector.localeCompare(b.sector); vb = 0; break;
         case 'time': va = tsA; vb = tsB; break;
         default: va = a.code.localeCompare(b.code); vb = 0; break;
       }
-      if (sortField === 'code') return sortDir === 'asc' ? va as unknown as number : vb as unknown as number;
+      if (sortField === 'code' || sortField === 'sector') {
+        return sortDir === 'asc' ? (va as unknown as number) : (vb as unknown as number);
+      }
       return sortDir === 'asc' ? va - vb : vb - va;
     });
     return arr;
@@ -88,6 +91,7 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
         <thead>
           <tr>
             <th onClick={() => handleSort('code')}>基金 {sortField === 'code' && sortArrow}</th>
+            <th onClick={() => handleSort('sector')}>行业 {sortField === 'sector' && sortArrow}</th>
             <th onClick={() => handleSort('nav')}>最新净值 {sortField === 'nav' && sortArrow}</th>
             <th onClick={() => handleSort('accumulatedNAV')}>累计净值 {sortField === 'accumulatedNAV' && sortArrow}</th>
             <th onClick={() => handleSort('dailyChange')}>日涨跌幅 {sortField === 'dailyChange' && sortArrow}</th>
@@ -123,6 +127,7 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
                     </span>
                     <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
                   </td>
+                  <td>{fund.sector || '-'}</td>
                   <td className={nav > 0 ? styles.priceUp : ''}>{nav > 0 ? nav.toFixed(4) : '-'}</td>
                   <td>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</td>
                   <td className={dcp !== undefined ? (dcp >= 0 ? styles.up : styles.down) : ''}>
@@ -145,7 +150,7 @@ export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
                 </tr>
                 {expanded.has(fund.id) && (
                   <tr className={styles.detailRow}>
-                    <td colSpan={13}>
+                    <td colSpan={14}>
                       <div className={styles.detailPanel}>
                         <div className={styles.detailSection}>
                           <span className={styles.detailLabel}>持有金额:</span>

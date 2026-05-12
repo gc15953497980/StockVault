@@ -33,7 +33,7 @@ export function fundsToCSV(
   avgDownsides?: Record<string, number>
 ): string {
   const headers = [
-    '代码', '名称', '最新净值', '累计净值', '持仓成本净值',
+    '代码', '名称', '行业', '最新净值', '累计净值', '持仓成本净值',
     '持有金额', '持有份额', '持有市值', '浮动盈亏', '盈亏比例',
     '近6月日均跌幅',
   ];
@@ -43,7 +43,7 @@ export function fundsToCSV(
     const calc = calcFund(nav, f.holdingCost, f.holdingAmount);
     const avgDown = avgDownsides?.[f.code];
     return [
-      f.code, f.name, nav > 0 ? nav.toFixed(4) : '', accNAV > 0 ? accNAV.toFixed(4) : '',
+      f.code, f.name, f.sector || '', nav > 0 ? nav.toFixed(4) : '', accNAV > 0 ? accNAV.toFixed(4) : '',
       f.holdingCost > 0 ? f.holdingCost.toFixed(4) : '',
       f.holdingAmount > 0 ? f.holdingAmount.toFixed(2) : '',
       calc.shares > 0 ? calc.shares.toFixed(2) : '',

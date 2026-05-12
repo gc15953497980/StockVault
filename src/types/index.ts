@@ -32,9 +32,16 @@ export interface Fund {
   id: string;
   code: string;
   name: string;
+  sector: string;
   holdingAmount: number;
   holdingCost: number;
 }
+
+export const SECTOR_OPTIONS = [
+  '科技', '消费', '医药', '新能源', '金融',
+  '军工', '制造', '周期', '债券', '混合',
+  '指数', '其他',
+] as const;
 
 export interface FundWithPrice extends Fund {
   currentNAV: number;

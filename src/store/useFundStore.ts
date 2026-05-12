@@ -43,6 +43,9 @@ function loadFunds(): Fund[] {
       if (f.holdingCost === undefined) {
         f.holdingCost = 0;
       }
+      if (f.sector === undefined) {
+        f.sector = '';
+      }
     }
     return funds;
   } catch {

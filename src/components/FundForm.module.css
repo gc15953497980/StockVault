@@ -44,7 +44,8 @@
   color: var(--text-secondary);
 }
 
-.field input {
+.field input,
+.field select {
   padding: 8px 12px;
   border: 1px solid var(--border-heavy);
   border-radius: 6px;
@@ -55,7 +56,8 @@
   transition: border-color 0.2s;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: var(--primary);
 }
 
