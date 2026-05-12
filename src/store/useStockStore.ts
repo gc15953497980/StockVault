@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { Stock, StockWithPrice } from '../types';
 import { fetchStockPrices } from '../utils/api';
+import { pushToGist } from '../utils/gistSync';
+
+function autoSyncPush() {
+  if (localStorage.getItem('stockvault_sync_auto') === '1') {
+    pushToGist().catch(() => {});
+  }
+}
 
 interface StockStore {
   stocks: Stock[];
@@ -32,7 +39,6 @@ function loadStocks(): Stock[] {
       if (s.marketCap === undefined) {
         s.marketCap = 0;
       }
-      // migrate old batch fields to arrays
       if (s.buyPrices === undefined) {
         s.buyPrices = [];
         s.buyShares = [];
@@ -82,23 +88,27 @@ export const useStockStore = create<StockStore>((set, get) => ({
     const stocks = [...get().stocks, stock];
     saveStocks(stocks);
     set({ stocks });
+    autoSyncPush();
   },
 
   setStocks: (stocks) => {
     saveStocks(stocks);
     set({ stocks });
+    autoSyncPush();
   },
 
   updateStock: (stock) => {
     const stocks = get().stocks.map((s) => (s.id === stock.id ? stock : s));
     saveStocks(stocks);
     set({ stocks });
+    autoSyncPush();
   },
 
   deleteStock: (id) => {
     const stocks = get().stocks.filter((s) => s.id !== id);
     saveStocks(stocks);
     set({ stocks });
+    autoSyncPush();
   },
 
   refreshPrices: async () => {

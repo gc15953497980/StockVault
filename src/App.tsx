@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import StockView from './components/StockView';
 import FundView from './components/FundView';
+import SyncPanel from './components/SyncPanel';
 import { useAutoBackup } from './utils/autoBackup';
 import styles from './App.module.css';
 
@@ -15,6 +16,7 @@ function getTheme(): 'light' | 'dark' {
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('stocks');
   const [theme, setTheme] = useState<'light' | 'dark'>(getTheme);
+  const [syncKey, setSyncKey] = useState(0);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -36,6 +38,10 @@ export default function App() {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }, []);
 
+  const handleSyncDataChanged = useCallback(() => {
+    setSyncKey((k) => k + 1);
+  }, []);
+
   useAutoBackup();
 
   return (
@@ -43,6 +49,7 @@ export default function App() {
       <header className={styles.header}>
         <h1>StockVault</h1>
         <span className={styles.subtitle}>持仓管理</span>
+        <SyncPanel onDataChanged={handleSyncDataChanged} />
         <button className={styles.themeToggle} onClick={toggleTheme}>
           {theme === 'light' ? '🌙 暗色' : '☀️ 亮色'}
         </button>
@@ -63,7 +70,7 @@ export default function App() {
         </button>
       </nav>
 
-      {activeTab === 'stocks' ? <StockView /> : <FundView />}
+      {activeTab === 'stocks' ? <StockView key={`stocks-${syncKey}`} /> : <FundView key={`funds-${syncKey}`} />}
     </div>
   );
 }

@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { Fund, FundWithPrice } from '../types';
 import { fetchFundPrices } from '../utils/api';
+import { pushToGist } from '../utils/gistSync';
+
+function autoSyncPush() {
+  if (localStorage.getItem('stockvault_sync_auto') === '1') {
+    pushToGist().catch(() => {});
+  }
+}
 
 interface FundStore {
   funds: Fund[];
@@ -59,23 +66,27 @@ export const useFundStore = create<FundStore>((set, get) => ({
     const funds = [...get().funds, fund];
     saveFunds(funds);
     set({ funds });
+    autoSyncPush();
   },
 
   setFunds: (funds) => {
     saveFunds(funds);
     set({ funds });
+    autoSyncPush();
   },
 
   updateFund: (fund) => {
     const funds = get().funds.map((f) => (f.id === fund.id ? fund : f));
     saveFunds(funds);
     set({ funds });
+    autoSyncPush();
   },
 
   deleteFund: (id) => {
     const funds = get().funds.filter((f) => f.id !== id);
     saveFunds(funds);
     set({ funds });
+    autoSyncPush();
   },
 
   refreshPrices: async () => {

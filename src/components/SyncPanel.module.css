@@ -1,0 +1,185 @@
+.syncBtn {
+  border: 1px solid var(--border-heavy);
+  background: var(--surface);
+  color: var(--primary);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.syncBtn:hover {
+  background: var(--primary-light);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 28px 32px;
+  width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-heavy);
+}
+
+.title {
+  margin: 0 0 20px;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.field input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-heavy);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.field input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.hint code {
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.hint a {
+  color: var(--primary);
+  margin-left: 4px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btnPrimary,
+.btnSecondary,
+.btnCancel,
+.btnDanger {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.btnPrimary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--primary-hover);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: var(--primary-light);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.btnSecondary:hover {
+  filter: brightness(0.95);
+}
+
+.btnCancel {
+  background: var(--btn-default-bg);
+  color: var(--btn-default-text);
+}
+
+.btnCancel:hover {
+  background: var(--btn-default-hover);
+}
+
+.btnDanger {
+  background: var(--up-bg);
+  color: var(--up);
+}
+
+.btnDanger:hover {
+  filter: brightness(0.9);
+}
+
+.autoSync {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.autoSync label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.statusSuccess {
+  background: var(--down-bg);
+  color: var(--down);
+}
+
+.statusError {
+  background: var(--up-bg);
+  color: var(--up);
+}
+
+.statusInfo {
+  background: var(--primary-light);
+  color: var(--primary);
+}
