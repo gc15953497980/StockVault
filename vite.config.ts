@@ -14,6 +14,14 @@ export default defineConfig({
           Referer: 'https://finance.sina.com.cn',
         },
       },
+      '/api/fundnav': {
+        target: 'https://api.fund.eastmoney.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/fundnav/, ''),
+        headers: {
+          Referer: 'https://fundf10.eastmoney.com/',
+        },
+      },
     },
   },
 })

@@ -29,16 +29,19 @@ export function stocksToCSV(
 export function fundsToCSV(
   funds: Fund[],
   navs: Record<string, number>,
-  accumulatedNAVs: Record<string, number>
+  accumulatedNAVs: Record<string, number>,
+  avgDownsides?: Record<string, number>
 ): string {
   const headers = [
     '代码', '名称', '最新净值', '累计净值', '持仓成本净值',
     '持有金额', '持有份额', '持有市值', '浮动盈亏', '盈亏比例',
+    '近6月日均跌幅',
   ];
   const rows = funds.map((f) => {
     const nav = navs[f.code] ?? 0;
     const accNAV = accumulatedNAVs[f.code] ?? 0;
     const calc = calcFund(nav, f.holdingCost, f.holdingAmount);
+    const avgDown = avgDownsides?.[f.code];
     return [
       f.code, f.name, nav > 0 ? nav.toFixed(4) : '', accNAV > 0 ? accNAV.toFixed(4) : '',
       f.holdingCost > 0 ? f.holdingCost.toFixed(4) : '',
@@ -46,6 +49,7 @@ export function fundsToCSV(
       calc.shares > 0 ? calc.shares.toFixed(2) : '',
       calc.marketValue.toFixed(2), calc.profitLoss.toFixed(2),
       calc.profitLossPercent.toFixed(2),
+      avgDown !== undefined ? avgDown.toFixed(2) + '%' : '',
     ];
   });
   return [headers, ...rows].map((r) => r.map(escapeCSV).join(',')).join('\n');

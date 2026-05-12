@@ -80,3 +80,9 @@ export interface FundDividend {
   type: 'cash' | 'reinvest';
   amount: number;
 }
+
+export interface FundNavPoint {
+  date: string;
+  nav: number;
+  growthRate: number;
+}

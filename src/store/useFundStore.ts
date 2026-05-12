@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Fund, FundWithPrice } from '../types';
-import { fetchFundPrices } from '../utils/api';
+import { fetchFundPrices, fetchFundHistoryNAV, calcAvgDownside } from '../utils/api';
 import { pushToGist } from '../utils/gistSync';
 
 function autoSyncPush() {
@@ -16,6 +16,7 @@ interface FundStore {
   dailyChanges: Record<string, number>;
   dailyChangePercents: Record<string, number>;
   timestamps: Record<string, number>;
+  avgDownsides: Record<string, number>;
   loading: boolean;
   error: string | null;
 
@@ -24,6 +25,7 @@ interface FundStore {
   updateFund: (fund: Fund) => void;
   deleteFund: (id: string) => void;
   refreshPrices: () => Promise<void>;
+  refreshHistoryNAVs: () => Promise<void>;
   getFundWithPrice: (fund: Fund) => FundWithPrice;
 }
 
@@ -59,6 +61,7 @@ export const useFundStore = create<FundStore>((set, get) => ({
   dailyChanges: {},
   dailyChangePercents: {},
   timestamps: {},
+  avgDownsides: {},
   loading: false,
   error: null,
 
@@ -133,6 +136,20 @@ export const useFundStore = create<FundStore>((set, get) => ({
     } catch (e) {
       set({ error: (e as Error).message, loading: false });
     }
+  },
+
+  refreshHistoryNAVs: async () => {
+    const { funds } = get();
+    if (funds.length === 0) return;
+
+    const avgDownsides: Record<string, number> = { ...get().avgDownsides };
+
+    for (const fund of funds) {
+      const history = await fetchFundHistoryNAV(fund.code);
+      avgDownsides[fund.code] = calcAvgDownside(history);
+    }
+
+    set({ avgDownsides });
   },
 
   getFundWithPrice: (fund) => {

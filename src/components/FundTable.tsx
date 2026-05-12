@@ -7,17 +7,19 @@ import styles from './FundTable.module.css';
 interface Props {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  hideNames?: boolean;
 }
 
-type SortField = 'code' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'time';
+type SortField = 'code' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'avgDownside' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function FundTable({ onEdit, onDelete }: Props) {
+export default function FundTable({ onEdit, onDelete, hideNames }: Props) {
   const funds = useFundStore((s) => s.funds);
   const navs = useFundStore((s) => s.navs);
   const accumulatedNAVs = useFundStore((s) => s.accumulatedNAVs);
   const dailyChanges = useFundStore((s) => s.dailyChanges);
   const dailyChangePercents = useFundStore((s) => s.dailyChangePercents);
+  const avgDownsides = useFundStore((s) => s.avgDownsides);
   const timestamps = useFundStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -66,6 +68,7 @@ export default function FundTable({ onEdit, onDelete }: Props) {
         case 'marketValue': va = calcA.marketValue; vb = calcB.marketValue; break;
         case 'profitLoss': va = calcA.profitLoss; vb = calcB.profitLoss; break;
         case 'profitLossPercent': va = calcA.profitLossPercent; vb = calcB.profitLossPercent; break;
+        case 'avgDownside': va = avgDownsides[a.code] ?? 0; vb = avgDownsides[b.code] ?? 0; break;
         case 'time': va = tsA; vb = tsB; break;
         default: va = a.code.localeCompare(b.code); vb = 0; break;
       }
@@ -73,7 +76,7 @@ export default function FundTable({ onEdit, onDelete }: Props) {
       return sortDir === 'asc' ? va - vb : vb - va;
     });
     return arr;
-  }, [funds, navs, accumulatedNAVs, dailyChangePercents, timestamps, sortField, sortDir]);
+  }, [funds, navs, accumulatedNAVs, dailyChangePercents, avgDownsides, timestamps, sortField, sortDir]);
 
   if (funds.length === 0) {
     return <div className={styles.empty}>暂无基金数据，点击上方"添加基金"开始</div>;
@@ -88,6 +91,7 @@ export default function FundTable({ onEdit, onDelete }: Props) {
             <th onClick={() => handleSort('nav')}>最新净值 {sortField === 'nav' && sortArrow}</th>
             <th onClick={() => handleSort('accumulatedNAV')}>累计净值 {sortField === 'accumulatedNAV' && sortArrow}</th>
             <th onClick={() => handleSort('dailyChange')}>日涨跌幅 {sortField === 'dailyChange' && sortArrow}</th>
+            <th onClick={() => handleSort('avgDownside')}>近6月日均跌幅 {sortField === 'avgDownside' && sortArrow}</th>
             <th onClick={() => handleSort('holdingCost')}>持仓成本 {sortField === 'holdingCost' && sortArrow}</th>
             <th onClick={() => handleSort('holdingAmount')}>持有金额 {sortField === 'holdingAmount' && sortArrow}</th>
             <th onClick={() => handleSort('shares')}>持有份额 {sortField === 'shares' && sortArrow}</th>
@@ -114,13 +118,18 @@ export default function FundTable({ onEdit, onDelete }: Props) {
                     <button className={styles.detailToggle} onClick={() => toggleExpand(fund.id)}>
                       {expanded.has(fund.id) ? '▼' : '▶'}
                     </button>
-                    <span className={styles.fundName}>{fund.name || fund.code}</span>
-                    <span className={styles.fundCode}>{fund.code}</span>
+                    <span className={styles.fundName}>
+                      {hideNames ? '***' : (fund.name || fund.code)}
+                    </span>
+                    <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
                   </td>
                   <td className={nav > 0 ? styles.priceUp : ''}>{nav > 0 ? nav.toFixed(4) : '-'}</td>
                   <td>{accNAV > 0 ? accNAV.toFixed(4) : '-'}</td>
                   <td className={dcp !== undefined ? (dcp >= 0 ? styles.up : styles.down) : ''}>
                     {dcp !== undefined ? (dcp >= 0 ? '+' : '') + dcp.toFixed(2) + '%' : '-'}
+                  </td>
+                  <td className={avgDownsides[fund.code] !== undefined ? styles.down : ''}>
+                    {avgDownsides[fund.code] !== undefined ? '-' + avgDownsides[fund.code].toFixed(2) + '%' : '-'}
                   </td>
                   <td>{fund.holdingCost > 0 ? fund.holdingCost.toFixed(4) : '-'}</td>
                   <td>{fund.holdingAmount > 0 ? formatMoney(fund.holdingAmount) : '-'}</td>
@@ -136,7 +145,7 @@ export default function FundTable({ onEdit, onDelete }: Props) {
                 </tr>
                 {expanded.has(fund.id) && (
                   <tr className={styles.detailRow}>
-                    <td colSpan={12}>
+                    <td colSpan={13}>
                       <div className={styles.detailPanel}>
                         <div className={styles.detailSection}>
                           <span className={styles.detailLabel}>持有金额:</span>

@@ -1,4 +1,4 @@
-import type { StockCalculations, FundCalculations } from '../types';
+import type { StockCalculations, FundCalculations, FundNavPoint } from '../types';
 
 const SINA_API = '/api/sina/list=';
 
@@ -153,4 +153,80 @@ export function formatMoney(v: number): string {
 
 export function formatPercent(v: number): string {
   return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+}
+
+const FUND_HISTORY_CACHE_PREFIX = 'stockvault_fundnav_';
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24小时
+
+function getCachedHistory(code: string): FundNavPoint[] | null {
+  try {
+    const raw = localStorage.getItem(FUND_HISTORY_CACHE_PREFIX + code);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedHistory(code: string, data: FundNavPoint[]) {
+  localStorage.setItem(
+    FUND_HISTORY_CACHE_PREFIX + code,
+    JSON.stringify({ data, ts: Date.now() })
+  );
+}
+
+export async function fetchFundHistoryNAV(code: string): Promise<FundNavPoint[]> {
+  const cached = getCachedHistory(code);
+  if (cached) return cached;
+
+  const now = new Date();
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const startDate = sixMonthsAgo.toISOString().split('T')[0];
+  const endDate = now.toISOString().split('T')[0];
+
+  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=200&startDate=${startDate}&endDate=${endDate}`;
+
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (json.ErrCode !== 0 || !json.Data?.LSJZList) {
+      return [];
+    }
+
+    const result: FundNavPoint[] = json.Data.LSJZList
+      .filter((item: Record<string, string>) => item.DWJZ && parseFloat(item.DWJZ) > 0)
+      .map((item: Record<string, string>) => ({
+        date: item.FSRQ,
+        nav: parseFloat(item.DWJZ),
+        growthRate: item.JZZZL ? parseFloat(item.JZZZL) : 0,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (result.length > 0) {
+      setCachedHistory(code, result);
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+export function calcAvgDownside(history: FundNavPoint[]): number {
+  if (history.length < 2) return 0;
+
+  let totalDownside = 0;
+  let downDays = 0;
+
+  for (const point of history) {
+    if (point.growthRate < 0) {
+      totalDownside += Math.abs(point.growthRate);
+      downDays++;
+    }
+  }
+
+  return downDays > 0 ? totalDownside / downDays : 0;
 }
