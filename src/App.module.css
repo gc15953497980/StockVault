@@ -6,7 +6,7 @@
 
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -14,21 +14,37 @@
 .header h1 {
   font-size: 26px;
   font-weight: 700;
-  color: #222;
+  color: var(--text);
   margin: 0;
   letter-spacing: -0.5px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.themeToggle {
+  border: 1px solid var(--border-heavy);
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.themeToggle:hover {
+  background: var(--surface-hover);
 }
 
 .tabs {
   display: flex;
   gap: 0;
   margin-bottom: 24px;
-  border-bottom: 2px solid #e8e8e8;
+  border-bottom: 2px solid var(--tab-border);
 }
 
 .tab {
@@ -37,7 +53,7 @@
   padding: 10px 28px;
   font-size: 15px;
   font-weight: 500;
-  color: #888;
+  color: var(--text-secondary);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
@@ -45,10 +61,10 @@
 }
 
 .tab:hover {
-  color: #444;
+  color: var(--text);
 }
 
 .tabActive {
-  color: #1a73e8;
-  border-bottom-color: #1a73e8;
+  color: var(--tab-active-text);
+  border-bottom-color: var(--tab-active-text);
 }

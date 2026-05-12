@@ -3,7 +3,8 @@ import styles from './Toolbar.module.css';
 interface Props {
   addLabel: string;
   onAdd: () => void;
-  onExport: () => void;
+  onExportJSON: () => void;
+  onExportCSV: () => void;
   onImport: (file: File) => void;
   loading: boolean;
   error: string | null;
@@ -14,7 +15,8 @@ interface Props {
 export default function Toolbar({
   addLabel,
   onAdd,
-  onExport,
+  onExportJSON,
+  onExportCSV,
   onImport,
   loading,
   error,
@@ -52,10 +54,17 @@ export default function Toolbar({
         </button>
         <button
           className={styles.btnDefault}
-          onClick={onExport}
+          onClick={onExportJSON}
           disabled={count === 0}
         >
-          导出
+          导出JSON
+        </button>
+        <button
+          className={styles.btnDefault}
+          onClick={onExportCSV}
+          disabled={count === 0}
+        >
+          导出CSV
         </button>
       </div>
       {error && <div className={styles.error}>{error}</div>}

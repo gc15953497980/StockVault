@@ -6,28 +6,29 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
+  transition: background 0.3s;
 }
 
 .label {
   font-size: 13px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
 .value {
   font-size: 26px;
   font-weight: 700;
-  color: #222;
+  color: var(--text);
 }
 
 .up {
-  color: #e83929;
+  color: var(--up);
 }
 
 .down {
-  color: #1ca051;
+  color: var(--down);
 }

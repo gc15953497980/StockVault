@@ -1,8 +1,9 @@
 .wrapper {
   overflow-x: auto;
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow);
+  transition: background 0.3s;
 }
 
 .table {
@@ -16,15 +17,27 @@
 .table td {
   padding: 10px 12px;
   text-align: right;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .table th {
-  background: #fafafa;
+  background: var(--th-bg);
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   position: sticky;
   top: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.table th:hover {
+  color: var(--primary);
+}
+
+.sortArrow {
+  font-size: 10px;
+  margin-left: 2px;
 }
 
 .table th:first-child,
@@ -35,42 +48,51 @@
 .table th:last-child,
 .table td:last-child {
   text-align: center;
+  cursor: default;
+}
+
+.table th:last-child:hover {
+  color: var(--text-secondary);
+}
+
+.table tr:hover {
+  background: var(--surface-hover);
 }
 
 .stockName {
   font-weight: 600;
-  color: #222;
+  color: var(--text);
   display: block;
 }
 
 .stockCode {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .up {
-  color: #e83929;
+  color: var(--up);
   font-weight: 600;
 }
 
 .down {
-  color: #1ca051;
+  color: var(--down);
   font-weight: 600;
 }
 
 .priceUp {
-  color: #e83929;
+  color: var(--up);
   font-weight: 600;
 }
 
 .tp {
-  color: #e87929;
+  color: var(--warn);
   font-weight: 500;
 }
 
 .time {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .btnEdit,
@@ -84,26 +106,66 @@
 }
 
 .btnEdit {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: var(--primary-light);
+  color: var(--primary);
 }
 
 .btnDel {
-  background: #fce8e6;
-  color: #e83929;
+  background: var(--up-bg);
+  color: var(--up);
 }
 
 .btnEdit:hover {
-  background: #d2e3fc;
+  filter: brightness(0.9);
 }
 
 .btnDel:hover {
-  background: #f8d7da;
+  filter: brightness(0.9);
 }
 
 .empty {
   text-align: center;
   padding: 60px 20px;
-  color: #999;
+  color: var(--text-muted);
   font-size: 15px;
+}
+
+.detailToggle {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.detailRow td {
+  padding: 0;
+  border-bottom: 2px solid var(--border);
+}
+
+.detailPanel {
+  padding: 12px 16px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detailSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.detailLabel {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.detailValue {
+  color: var(--text);
+  font-weight: 500;
 }

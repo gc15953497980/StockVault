@@ -51,3 +51,32 @@ export interface FundCalculations {
   profitLoss: number;
   profitLossPercent: number;
 }
+
+export interface StockTx {
+  id: string;
+  date: string;
+  type: 'buy' | 'sell';
+  price: number;
+  shares: number;
+}
+
+export interface StockDividend {
+  id: string;
+  date: string;
+  amount: number;
+}
+
+export interface FundTx {
+  id: string;
+  date: string;
+  type: 'buy' | 'sell';
+  nav: number;
+  amount: number;
+}
+
+export interface FundDividend {
+  id: string;
+  date: string;
+  type: 'cash' | 'reinvest';
+  amount: number;
+}
