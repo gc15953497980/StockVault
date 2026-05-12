@@ -33,7 +33,7 @@ export default function SectorChart() {
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 10, padding: 16, boxShadow: 'var(--shadow)' }}>
       <h3 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>行业分布</h3>
-      <ResponsiveContainer width="100%" height={280}>
+      <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie
             data={data}
@@ -42,10 +42,31 @@ export default function SectorChart() {
             outerRadius={100}
             innerRadius={50}
             dataKey="value"
-            label={({ name, percent }) =>
-              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-            }
-            labelLine={{ stroke: 'var(--text-muted)' }}
+            label={({ name, percent, cx, cy, midAngle, outerRadius }) => {
+              const pct = ((percent ?? 0) * 100).toFixed(0);
+              const rawName = String(name ?? '');
+              const shortName = rawName.length > 6 ? rawName.slice(0, 6) + '…' : rawName;
+              const RADIAN = Math.PI / 180;
+              const sin = Math.sin(-RADIAN * (midAngle ?? 0));
+              const cos = Math.cos(-RADIAN * (midAngle ?? 0));
+              const sx = (cx ?? 0) + (outerRadius ?? 100) * cos;
+              const sy = (cy ?? 0) + (outerRadius ?? 100) * sin;
+              const tx = (cx ?? 0) + (outerRadius ?? 100 + 30) * cos;
+              const ty = (cy ?? 0) + (outerRadius ?? 100 + 30) * sin;
+              const textAnchor = cos >= 0 ? 'start' : 'end';
+              return (
+                <g>
+                  <path d={`M${sx},${sy}L${tx},${ty}`} stroke="var(--text-muted)" fill="none" />
+                  <text x={tx + (cos >= 0 ? 4 : -4)} y={ty - 6} textAnchor={textAnchor} fill="var(--text)" fontSize={11}>
+                    {shortName}
+                  </text>
+                  <text x={tx + (cos >= 0 ? 4 : -4)} y={ty + 8} textAnchor={textAnchor} fill="var(--text-muted)" fontSize={10}>
+                    {pct}%
+                  </text>
+                </g>
+              );
+            }}
+            labelLine={false}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -59,7 +80,14 @@ export default function SectorChart() {
               return n.toFixed(2);
             }}
           />
-          <Legend />
+          <Legend
+            formatter={(value) => {
+              if (typeof value === 'string' && value.length > 10) {
+                return <span title={value}>{value.slice(0, 10)}…</span>;
+              }
+              return value;
+            }}
+          />
         </PieChart>
       </ResponsiveContainer>
     </div>

@@ -119,7 +119,24 @@ export default function Dashboard() {
                 <h3>资产配置</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie data={allocationData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                    <Pie data={allocationData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" label={({ name, percent, cx, cy, midAngle, outerRadius }) => {
+                      const pct = ((percent ?? 0) * 100).toFixed(0);
+                      const RADIAN = Math.PI / 180;
+                      const sin = Math.sin(-RADIAN * (midAngle ?? 0));
+                      const cos = Math.cos(-RADIAN * (midAngle ?? 0));
+                      const sx = (cx ?? 0) + (outerRadius ?? 90) * cos;
+                      const sy = (cy ?? 0) + (outerRadius ?? 90) * sin;
+                      const tx = (cx ?? 0) + (outerRadius ?? 90 + 30) * cos;
+                      const ty = (cy ?? 0) + (outerRadius ?? 90 + 30) * sin;
+                      const textAnchor = cos >= 0 ? 'start' : 'end';
+                      return (
+                        <g>
+                          <path d={`M${sx},${sy}L${tx},${ty}`} stroke="var(--text-muted)" fill="none" />
+                          <text x={tx + (cos >= 0 ? 4 : -4)} y={ty - 5} textAnchor={textAnchor} fill="var(--text)" fontSize={12}>{name}</text>
+                          <text x={tx + (cos >= 0 ? 4 : -4)} y={ty + 10} textAnchor={textAnchor} fill="var(--text-muted)" fontSize={11}>{pct}%</text>
+                        </g>
+                      );
+                    }} labelLine={false}>
                       {allocationData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                     </Pie>
                     <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
