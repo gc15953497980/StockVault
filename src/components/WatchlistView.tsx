@@ -51,7 +51,6 @@ export default function WatchlistView() {
   }, [items]);
 
   const handleAdd = () => {
-    if (!code.trim()) return;
     setShowForm(true);
     setEditingId(null);
     setCode('');
@@ -62,6 +61,7 @@ export default function WatchlistView() {
   };
 
   const handleSave = () => {
+    if (!code.trim()) return;
     const id = editingId || Date.now().toString(36);
     const item: WatchItem = {
       id,
