@@ -49,10 +49,10 @@ export default function SectorChart() {
               const RADIAN = Math.PI / 180;
               const sin = Math.sin(-RADIAN * (midAngle ?? 0));
               const cos = Math.cos(-RADIAN * (midAngle ?? 0));
-              const sx = (cx ?? 0) + (outerRadius ?? 100) * cos;
-              const sy = (cy ?? 0) + (outerRadius ?? 100) * sin;
-              const tx = (cx ?? 0) + (outerRadius ?? 100 + 30) * cos;
-              const ty = (cy ?? 0) + (outerRadius ?? 100 + 30) * sin;
+              const sx = (cx ?? 0) + ((outerRadius ?? 100) + 0) * cos;
+              const sy = (cy ?? 0) + ((outerRadius ?? 100) + 0) * sin;
+              const tx = (cx ?? 0) + ((outerRadius ?? 100) + 30) * cos;
+              const ty = (cy ?? 0) + ((outerRadius ?? 100) + 30) * sin;
               const textAnchor = cos >= 0 ? 'start' : 'end';
               return (
                 <g>

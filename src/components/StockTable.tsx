@@ -16,7 +16,6 @@ type SortDir = 'asc' | 'desc';
 export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
   const stocks = useStockStore((s) => s.stocks);
   const prices = useStockStore((s) => s.prices);
-  const marketCaps = useStockStore((s) => s.marketCaps);
   const timestamps = useStockStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -99,7 +98,6 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
         <tbody>
           {sorted.map((stock) => {
             const cp = prices[stock.code] ?? 0;
-            const apiMC = marketCaps[stock.code] ?? 0;
             const calc = calcStock(cp, stock.holdingCost, stock.shares, stock.targetPrice, stock.targetMarketValue);
             const ts = timestamps[stock.code];
             const timeStr = ts ? new Date(ts).toLocaleTimeString('zh-CN') : '-';
@@ -121,7 +119,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                   <td className={cp > 0 ? styles.priceUp : ''}>{cp > 0 ? cp.toFixed(2) : '-'}</td>
                   <td>{stock.holdingCost.toFixed(2)}</td>
                   <td>{stock.shares}</td>
-                  <td>{apiMC > 0 ? formatMoney(apiMC) : stock.marketCap > 0 ? formatMoney(stock.marketCap) : formatMoney(calc.costTotal)}</td>
+                  <td>{cp > 0 && stock.shares > 0 ? formatMoney(cp * stock.shares) : stock.marketCap > 0 ? formatMoney(stock.marketCap) : formatMoney(calc.costTotal)}</td>
                   <td className={calc.profitLoss >= 0 ? styles.up : styles.down}>{formatMoney(calc.profitLoss)}</td>
                   <td className={calc.profitLossPercent >= 0 ? styles.up : styles.down}>{formatPercent(calc.profitLossPercent)}</td>
                   <td>{calc.targetPrice > 0 ? calc.targetPrice.toFixed(2) : '-'}</td>

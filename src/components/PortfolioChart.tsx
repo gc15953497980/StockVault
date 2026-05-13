@@ -35,10 +35,10 @@ export default function PortfolioChart({ stocks }: Props) {
               const RADIAN = Math.PI / 180;
               const sin = Math.sin(-RADIAN * (midAngle ?? 0));
               const cos = Math.cos(-RADIAN * (midAngle ?? 0));
-              const sx = (cx ?? 0) + (outerRadius ?? 0 + 10) * cos;
-              const sy = (cy ?? 0) + (outerRadius ?? 0 + 10) * sin;
-              const tx = (cx ?? 0) + (outerRadius ?? 0 + 30) * cos;
-              const ty = (cy ?? 0) + (outerRadius ?? 0 + 30) * sin;
+              const sx = (cx ?? 0) + ((outerRadius ?? 0) + 10) * cos;
+              const sy = (cy ?? 0) + ((outerRadius ?? 0) + 10) * sin;
+              const tx = (cx ?? 0) + ((outerRadius ?? 0) + 30) * cos;
+              const ty = (cy ?? 0) + ((outerRadius ?? 0) + 30) * sin;
               const textAnchor = cos >= 0 ? 'start' : 'end';
               return (
                 <g>

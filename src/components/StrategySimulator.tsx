@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line, ComposedChart, Scatter } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, Scatter, Line } from 'recharts';
 import { fetchFundHistoryNAV } from '../utils/api';
 import type { FundNavPoint } from '../types';
+import { createLogger } from '../utils/logger';
 import styles from './DcaCalculator.module.css';
+
+const log = createLogger('StrategySimulator');
 
 interface Props { onClose: () => void }
 
@@ -101,22 +104,52 @@ export default function StrategySimulator({ onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<StrategyResult[]>([]);
   const [history, setHistory] = useState<FundNavPoint[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSim = async () => {
     if (!code.trim()) return;
-    setLoading(true);
-    const hist = await fetchFundHistoryNAV(code.trim(), 12, 300);
-    setHistory(hist);
-    if (hist.length < 2) { setLoading(false); return; }
 
-    const scenarios: StrategyResult[] = [];
-    for (const sl of [3, 5, 8, 10]) {
-      for (const tp of [5, 10, 15, 20, 30]) {
-        scenarios.push(simulate(hist, sl, tp));
+    setError(null);
+    setResults([]);
+    setHistory([]);
+
+    log.info(`[handleSim] 开始策略回测 code=${code}`);
+    setLoading(true);
+
+    try {
+      const hist = await fetchFundHistoryNAV(code.trim(), 12, 300);
+      log.info(`[handleSim] 获取到 ${hist.length} 条历史净值数据`);
+      setHistory(hist);
+
+      if (hist.length < 2) {
+        setError('历史数据不足（少于2个交易日），无法进行策略回测。请检查基金代码是否正确');
+        log.warn(`[handleSim] 数据不足 hist.length=${hist.length}`);
+        setLoading(false);
+        return;
       }
+
+      const scenarios: StrategyResult[] = [];
+      for (const sl of [3, 5, 8, 10]) {
+        for (const tp of [5, 10, 15, 20, 30]) {
+          scenarios.push(simulate(hist, sl, tp));
+        }
+      }
+
+      log.info(`[handleSim] 完成 ${scenarios.length} 种策略组合的模拟`);
+
+      // Log top 3 results
+      const top3 = [...scenarios].sort((a, b) => b.finalReturn - a.finalReturn).slice(0, 3);
+      top3.forEach((r, i) => {
+        log.info(`[handleSim] Top${i+1}: SL${r.stopLossPct}%/TP${r.takeProfitPct}% finalReturn=${r.finalReturn.toFixed(2)}% winRate=${r.winRate.toFixed(1)}% trades=${r.trades}`);
+      });
+
+      setResults(scenarios);
+    } catch (err) {
+      log.error('[handleSim] 回测异常', err);
+      setError('策略回测过程发生异常，请稍后重试');
+    } finally {
+      setLoading(false);
     }
-    setResults(scenarios);
-    setLoading(false);
   };
 
   const barData = results
@@ -164,6 +197,12 @@ export default function StrategySimulator({ onClose }: Props) {
             将回测止盈(5-30%) x 止损(3-10%) 共20种组合
           </span>
         </div>
+
+        {error && (
+          <div style={{ color: '#e83929', fontSize: 13, margin: '12px 0', padding: '8px 12px', background: 'rgba(232,57,41,0.08)', borderRadius: 6 }}>
+            {error}
+          </div>
+        )}
 
         {best && (
           <div className={styles.resultGrid}>
@@ -221,7 +260,7 @@ export default function StrategySimulator({ onClose }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={60} domain={['auto', 'auto']} />
                 <Tooltip
-                  formatter={(v: any, name: string) => {
+                  formatter={(v: any, name: any) => {
                     if (name === 'nav') return [Number(v).toFixed(4), '净值'];
                     if (name === 'buy') return [Number(v).toFixed(4), '买入'];
                     if (name === 'sell') return [Number(v).toFixed(4), '卖出'];

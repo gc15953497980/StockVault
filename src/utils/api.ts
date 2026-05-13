@@ -1,4 +1,7 @@
 import type { StockCalculations, FundCalculations, FundNavPoint, BenchmarkPoint, Market } from '../types';
+import { createLogger } from './logger';
+
+const log = createLogger('api');
 
 const SINA_API = '/api/sina/list=';
 
@@ -196,22 +199,29 @@ export function formatPercent(v: number): string {
 const FUND_HISTORY_CACHE_PREFIX = 'stockvault_fundnav_';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
-function getCachedHistory(code: string): FundNavPoint[] | null {
+interface CacheEntry {
+  data: FundNavPoint[];
+  ts: number;
+  startDate: string;
+  endDate: string;
+}
+
+function getCachedHistory(code: string): CacheEntry | null {
   try {
     const raw = localStorage.getItem(FUND_HISTORY_CACHE_PREFIX + code);
     if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) return null;
-    return data;
+    const entry: CacheEntry = JSON.parse(raw);
+    if (Date.now() - entry.ts > CACHE_TTL) return null;
+    return entry;
   } catch {
     return null;
   }
 }
 
-function setCachedHistory(code: string, data: FundNavPoint[]) {
+function setCachedHistory(code: string, data: FundNavPoint[], startDate: string, endDate: string) {
   localStorage.setItem(
     FUND_HISTORY_CACHE_PREFIX + code,
-    JSON.stringify({ data, ts: Date.now() })
+    JSON.stringify({ data, ts: Date.now(), startDate, endDate })
   );
 }
 
@@ -220,22 +230,42 @@ export async function fetchFundHistoryNAV(
   monthsBack: number = 6,
   pageSize: number = 200
 ): Promise<FundNavPoint[]> {
-  const cached = getCachedHistory(code);
-  if (cached && monthsBack === 6) return cached;
-
   const now = new Date();
   const start = new Date(now);
   start.setMonth(start.getMonth() - monthsBack);
-  const startDate = start.toISOString().split('T')[0];
-  const endDate = now.toISOString().split('T')[0];
+  const reqStartDate = start.toISOString().split('T')[0];
+  const reqEndDate = now.toISOString().split('T')[0];
 
-  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=${pageSize}&startDate=${startDate}&endDate=${endDate}`;
+  log.info(`[fetchFundHistoryNAV] code=${code} monthsBack=${monthsBack} start=${reqStartDate} end=${reqEndDate}`);
+
+  // Check cache
+  const cached = getCachedHistory(code);
+  if (cached) {
+    log.debug(`[fetchFundHistoryNAV] cache hit, cached range ${cached.startDate} ~ ${cached.endDate}, ${cached.data.length} points`);
+    // Use cache if it fully covers the requested range
+    if (cached.startDate <= reqStartDate && cached.endDate >= reqEndDate) {
+      const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+      log.info(`[fetchFundHistoryNAV] cache covers request, returning ${filtered.length} points`);
+      return filtered;
+    }
+    log.debug(`[fetchFundHistoryNAV] cache doesn't cover requested range, fetching fresh`);
+  }
+
+  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=${pageSize}&startDate=${reqStartDate}&endDate=${reqEndDate}`;
+  log.debug(`[fetchFundHistoryNAV] requesting ${url}`);
 
   try {
     const res = await fetch(url);
     const json = await res.json();
 
     if (json.ErrCode !== 0 || !json.Data?.LSJZList) {
+      log.warn(`[fetchFundHistoryNAV] API error or empty data, ErrCode=${json.ErrCode}`);
+      // Return cached data as fallback even if it doesn't fully cover the range
+      if (cached) {
+        const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+        log.info(`[fetchFundHistoryNAV] fallback to cache, returning ${filtered.length} points`);
+        return filtered;
+      }
       return [];
     }
 
@@ -248,13 +278,37 @@ export async function fetchFundHistoryNAV(
       }))
       .sort((a: FundNavPoint, b: FundNavPoint) => a.date.localeCompare(b.date));
 
-    if (result.length > 0 && monthsBack === 6) {
-      setCachedHistory(code, result);
+    log.info(`[fetchFundHistoryNAV] fetched ${result.length} points, range ${result[0]?.date} ~ ${result[result.length-1]?.date}`);
+
+    // Merge with cached data to extend coverage
+    if (cached) {
+      const merged = mergeNavData(cached.data, result);
+      log.debug(`[fetchFundHistoryNAV] merged with cache, total ${merged.length} points`);
+      setCachedHistory(code, merged, reqStartDate, reqEndDate);
+      const filtered = merged.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+      return filtered;
+    }
+
+    if (result.length > 0) {
+      setCachedHistory(code, result, reqStartDate, reqEndDate);
     }
     return result;
-  } catch {
+  } catch (err) {
+    log.error(`[fetchFundHistoryNAV] fetch failed`, err);
+    if (cached) {
+      const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+      log.info(`[fetchFundHistoryNAV] fallback to cache, returning ${filtered.length} points`);
+      return filtered;
+    }
     return [];
   }
+}
+
+function mergeNavData(cached: FundNavPoint[], fresh: FundNavPoint[]): FundNavPoint[] {
+  const map = new Map<string, FundNavPoint>();
+  for (const p of cached) map.set(p.date, p);
+  for (const p of fresh) map.set(p.date, p);
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function calcAvgDownside(history: FundNavPoint[]): number {

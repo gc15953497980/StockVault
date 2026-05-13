@@ -15,7 +15,8 @@ export default function ValueTrendChart({ type }: Props) {
   const history = useValueHistoryStore((s) => s.history);
 
   const data = history.map((p) => ({
-    time: new Date(p.time).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+    time: new Date(p.time).toISOString().slice(5, 10),
+    fullDate: new Date(p.time).toISOString().slice(0, 10),
     value: type === 'stocks' ? p.stockValue : p.fundValue,
   }));
 
@@ -28,9 +29,15 @@ export default function ValueTrendChart({ type }: Props) {
       </h3>
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data}>
-          <XAxis dataKey="time" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+          <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
           <YAxis tickFormatter={formatValue} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={70} />
-          <Tooltip formatter={(v) => [formatValue(v as number), type === 'stocks' ? '股票市值' : '基金市值']} />
+          <Tooltip
+            formatter={(v) => [formatValue(v as number), type === 'stocks' ? '股票市值' : '基金市值']}
+            labelFormatter={(_label, payload) => {
+              const full = payload?.[0]?.payload?.fullDate;
+              return full ?? _label;
+            }}
+          />
           <Legend />
           <Line
             type="monotone"

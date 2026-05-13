@@ -105,7 +105,7 @@ export default function Dashboard() {
                 <h3>总资产走势</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <LineChart data={totalTrend}>
-                    <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                    <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
                     <YAxis tickFormatter={v => formatMoney(v as number)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={65} />
                     <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '总资产']} />
                     <Line type="monotone" dataKey="value" name="总资产" stroke="#1a73e8" strokeWidth={2} dot={false} />
@@ -124,10 +124,10 @@ export default function Dashboard() {
                       const RADIAN = Math.PI / 180;
                       const sin = Math.sin(-RADIAN * (midAngle ?? 0));
                       const cos = Math.cos(-RADIAN * (midAngle ?? 0));
-                      const sx = (cx ?? 0) + (outerRadius ?? 90) * cos;
-                      const sy = (cy ?? 0) + (outerRadius ?? 90) * sin;
-                      const tx = (cx ?? 0) + (outerRadius ?? 90 + 30) * cos;
-                      const ty = (cy ?? 0) + (outerRadius ?? 90 + 30) * sin;
+                      const sx = (cx ?? 0) + ((outerRadius ?? 90) + 0) * cos;
+                      const sy = (cy ?? 0) + ((outerRadius ?? 90) + 0) * sin;
+                      const tx = (cx ?? 0) + ((outerRadius ?? 90) + 30) * cos;
+                      const ty = (cy ?? 0) + ((outerRadius ?? 90) + 30) * sin;
                       const textAnchor = cos >= 0 ? 'start' : 'end';
                       return (
                         <g>

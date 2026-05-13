@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWatchlistStore } from '../store/useWatchlistStore';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
-import { fetchStockPrices, fetchFundPrices, toStockCode, toFundCode, marketLabel } from '../utils/api';
+import { fetchStockPrices, fetchForeignPrices, fetchFundPrices, toStockCode, toFundCode, marketLabel } from '../utils/api';
 import type { WatchItem, Market } from '../types';
 import styles from './WatchlistView.module.css';
 
@@ -21,16 +21,31 @@ export default function WatchlistView() {
   useEffect(() => {
     const refreshWatchPrices = async () => {
       if (items.length === 0) return;
-      const stocks = items.filter(i => i.type === 'stock' && i.market === 'a');
+      const aStocks = items.filter(i => i.type === 'stock' && i.market === 'a');
+      const foreignStocks = items.filter(i => i.type === 'stock' && i.market !== 'a');
       const funds = items.filter(i => i.type === 'fund');
 
-      if (stocks.length > 0) {
-        const result = await fetchStockPrices(stocks.map(s => s.code));
+      if (aStocks.length > 0) {
+        const result = await fetchStockPrices(aStocks.map(s => s.code));
         const p: Record<string, number> = {};
-        for (const s of stocks) {
+        for (const s of aStocks) {
           if (result[s.code]) p[s.code] = result[s.code].price;
         }
         setPrices(prev => ({ ...prev, ...p }));
+      }
+
+      if (foreignStocks.length > 0) {
+        const result = await fetchForeignPrices(foreignStocks.map(s => ({ code: s.code, market: s.market })));
+        const p: Record<string, number> = {};
+        const cp: Record<string, number> = {};
+        for (const s of foreignStocks) {
+          if (result[s.code]) {
+            p[s.code] = result[s.code].price;
+            cp[s.code] = result[s.code].changePercent;
+          }
+        }
+        setPrices(prev => ({ ...prev, ...p }));
+        setChangePercents(prev => ({ ...prev, ...cp }));
       }
 
       if (funds.length > 0) {

@@ -116,6 +116,7 @@ export default function FundView() {
   const hasData = funds.length > 0;
 
   const allTags = [...new Set(funds.flatMap(f => f.tags))];
+  const filteredFunds = filterTag ? funds.filter(f => f.tags.includes(filterTag)) : funds;
 
   return (
     <>
@@ -163,7 +164,7 @@ export default function FundView() {
         <div className={styles.charts}>
           <PortfolioChart
             stocks={
-              funds.map((f) => {
+              filteredFunds.map((f) => {
                 const nav = navs[f.code] ?? 0;
                 const mv = nav > 0 && f.holdingCost > 0 ? (f.holdingAmount / f.holdingCost) * nav : f.holdingAmount;
                 return { name: hideNames ? '***' : (f.name || f.code), value: mv };

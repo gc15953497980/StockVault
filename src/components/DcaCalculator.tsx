@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fetchFundHistoryNAV, formatMoney } from '../utils/api';
 import { simulateDCA } from '../utils/dca';
+import { createLogger } from '../utils/logger';
 import styles from './DcaCalculator.module.css';
+
+const log = createLogger('DcaCalculator');
 
 interface Props { onClose: () => void }
 
@@ -16,14 +19,58 @@ export default function DcaCalculator({ onClose }: Props) {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof simulateDCA> extends infer R ? R : never>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [ranOnce, setRanOnce] = useState(false);
 
   const handleCalc = async () => {
     if (!code.trim() || !amount) return;
+
+    setError(null);
+    setResult(null);
+    setRanOnce(false);
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError('请输入有效的每期金额');
+      log.warn(`[handleCalc] 无效金额: ${amount}`);
+      return;
+    }
+
+    if (startDate >= endDate) {
+      setError('开始日期必须早于结束日期');
+      log.warn(`[handleCalc] 日期非法: startDate=${startDate} >= endDate=${endDate}`);
+      return;
+    }
+
+    log.info(`[handleCalc] 开始定投回测 code=${code} amount=${parsedAmount} freq=${frequency} start=${startDate} end=${endDate}`);
     setLoading(true);
-    const history = await fetchFundHistoryNAV(code.trim(), 24, 500);
-    const res = simulateDCA(history, parseFloat(amount), frequency, startDate, endDate);
-    setResult(res);
-    setLoading(false);
+
+    try {
+      const history = await fetchFundHistoryNAV(code.trim(), 24, 500);
+      log.info(`[handleCalc] 获取到 ${history.length} 条历史净值数据`);
+
+      if (history.length === 0) {
+        setError('未获取到该基金的历史净值数据，请检查基金代码是否正确');
+        setLoading(false);
+        setRanOnce(true);
+        return;
+      }
+
+      const res = simulateDCA(history, parsedAmount, frequency, startDate, endDate);
+      if (res === null) {
+        setError('回测失败：数据不足或日期范围内无交易数据，请调整日期范围后重试');
+        log.warn('[handleCalc] simulateDCA 返回 null');
+      } else {
+        log.info(`[handleCalc] 回测完成 收益率=${res.totalReturnPercent.toFixed(2)}% 年化IRR≈${res.irr.toFixed(2)}%`);
+        setResult(res);
+      }
+    } catch (err) {
+      log.error('[handleCalc] 回测异常', err);
+      setError('回测过程发生异常，请稍后重试');
+    } finally {
+      setLoading(false);
+      setRanOnce(true);
+    }
   };
 
   const chartData = result?.navPoints.map((p) => ({
@@ -44,7 +91,7 @@ export default function DcaCalculator({ onClose }: Props) {
             </div>
             <div className={styles.field}>
               <label>每期金额</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min="1" />
             </div>
             <div className={styles.field}>
               <label>频率</label>
@@ -69,6 +116,12 @@ export default function DcaCalculator({ onClose }: Props) {
             </button>
           </div>
         </div>
+
+        {error && (
+          <div style={{ color: '#e83929', fontSize: 13, margin: '12px 0', padding: '8px 12px', background: 'rgba(232,57,41,0.08)', borderRadius: 6 }}>
+            {error}
+          </div>
+        )}
 
         {result && (
           <>
@@ -111,6 +164,13 @@ export default function DcaCalculator({ onClose }: Props) {
             </ResponsiveContainer>
           </>
         )}
+
+        {ranOnce && !result && !error && !loading && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, margin: '12px 0', textAlign: 'center' }}>
+            未能获取到回测结果
+          </div>
+        )}
+
         <div className={styles.actions}>
           <button className={styles.btnClose} onClick={onClose}>关闭</button>
         </div>

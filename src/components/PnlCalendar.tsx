@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { usePnlCalendarStore } from '../store/usePnlCalendarStore';
+import { formatMoney } from '../utils/api';
 import styles from './PnlCalendar.module.css';
 
 export default function PnlCalendar() {
@@ -75,7 +76,7 @@ export default function PnlCalendar() {
         <span className={styles.title}>{year}年{month}月</span>
         <button onClick={nextMonth} className={styles.navBtn}>&gt;</button>
         <span className={`${styles.monthPnl} ${monthlyPnl >= 0 ? styles.up : styles.down}`}>
-          月盈亏 {monthlyPnl >= 0 ? '+' : ''}{monthlyPnl.toFixed(2)}
+          月盈亏 {monthlyPnl >= 0 ? '+' : ''}{formatMoney(monthlyPnl)}
         </span>
       </div>
       <div className={styles.weekDays}>

@@ -24,18 +24,7 @@ export function useAutoRefresh({ onRefresh }: AutoRefreshOptions) {
   const setIntervalMinutesWithSave = useCallback((v: number) => {
     setIntervalMinutes(v);
     localStorage.setItem('stockvault_auto_refresh_interval', String(v));
-    setNextRefresh(null);
-    // Reset timer
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (autoRefresh) {
-      timerRef.current = setInterval(() => {
-        if (document.hidden) return;
-        onRefresh();
-        setNextRefresh(new Date(Date.now() + v * 60000));
-      }, v * 60000);
-      setNextRefresh(new Date(Date.now() + v * 60000));
-    }
-  }, [autoRefresh, onRefresh]);
+  }, []);
 
   useEffect(() => {
     if (!autoRefresh) {

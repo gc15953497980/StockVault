@@ -14,50 +14,32 @@ export default function DividendCompare({ fundId, onClose }: Props) {
 
   const { cashTotal, reinvestTotal, chartData } = useMemo(() => {
     let cashTotal = 0;
-    let reinvestValue = 0;
+    let totalReinvestShares = 0;
     const chartData: { label: string; cash: number; reinvest: number }[] = [];
 
     const sorted = [...dividends].sort((a, b) => a.date.localeCompare(b.date));
+    const currentNav = nav > 0 ? nav : (fund?.holdingCost || 1);
 
     for (const d of sorted) {
       if (d.type === 'cash') {
         cashTotal += d.amount;
-        chartData.push({
-          label: d.date.slice(0, 7),
-          cash: cashTotal,
-          reinvest: reinvestValue,
-        });
       } else {
-        // Dividend reinvestment: use accumulated NAV difference to track
-        reinvestValue += d.amount;
-        chartData.push({
-          label: d.date.slice(0, 7),
-          cash: cashTotal,
-          reinvest: reinvestValue,
-        });
+        // Estimate shares purchased using current NAV (approximation)
+        totalReinvestShares += d.amount / currentNav;
       }
+      chartData.push({
+        label: d.date.slice(0, 7),
+        cash: cashTotal,
+        reinvest: totalReinvestShares * currentNav,
+      });
     }
 
-    // Add final point with current NAV value
-    if (chartData.length > 0) {
-      // Estimate reinvest value: each reinvestment buys shares at the dividend date NAV
-      let totalReinvestShares = 0;
-      for (const d of sorted) {
-        if (d.type === 'reinvest') {
-          // Assume reinvestment buys at ~net value (simplified)
-          totalReinvestShares += d.amount / (fund?.holdingCost || 1);
-        }
-      }
-      reinvestValue = totalReinvestShares * nav;
-    }
+    const reinvestTotal = totalReinvestShares * currentNav;
 
     return {
       cashTotal,
-      reinvestTotal: reinvestValue,
-      chartData: chartData.map(d => ({
-        ...d,
-        reinvest: d.reinvest > 0 ? d.reinvest : 0,
-      })),
+      reinvestTotal,
+      chartData,
     };
   }, [dividends, fund, nav]);
 
