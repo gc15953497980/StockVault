@@ -19,17 +19,24 @@ export function useAutoRefresh({ onRefresh }: AutoRefreshOptions) {
     setAutoRefresh(v);
     localStorage.setItem('stockvault_auto_refresh', v ? '1' : '0');
     if (!v) setNextRefresh(null);
-  }, []);
+    else setNextRefresh(new Date(Date.now() + intervalMinutes * 60000));
+  }, [intervalMinutes]);
 
   const setIntervalMinutesWithSave = useCallback((v: number) => {
     setIntervalMinutes(v);
     localStorage.setItem('stockvault_auto_refresh_interval', String(v));
-  }, []);
+    if (autoRefresh) {
+      setNextRefresh(new Date(Date.now() + v * 60000));
+    }
+  }, [autoRefresh]);
 
   useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
     if (!autoRefresh) {
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      setNextRefresh(null);
       return;
     }
 
@@ -38,8 +45,6 @@ export function useAutoRefresh({ onRefresh }: AutoRefreshOptions) {
       onRefresh();
       setNextRefresh(new Date(Date.now() + intervalMinutes * 60000));
     }, intervalMinutes * 60000);
-
-    setNextRefresh(new Date(Date.now() + intervalMinutes * 60000));
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
