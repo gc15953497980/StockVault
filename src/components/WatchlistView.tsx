@@ -120,6 +120,7 @@ export default function WatchlistView() {
       takeProfitShares: [],
       tags: [],
       market: item.market,
+      type: 'stock',
     });
   };
 

@@ -78,6 +78,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
           <tr>
             <th onClick={() => handleSort('code')}>股票 {sortField === 'code' && sortArrow}</th>
             <th>市场</th>
+            <th>类型</th>
             <th>标签</th>
             <th onClick={() => handleSort('price')}>现价 {sortField === 'price' && sortArrow}</th>
             <th onClick={() => handleSort('cost')}>持仓成本 {sortField === 'cost' && sortArrow}</th>
@@ -113,13 +114,14 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                     <span className={styles.stockCode}>{stock.code}</span>
                   </td>
                   <td className={styles.market}>{marketLabel(stock.market)}</td>
+                  <td><span className={stock.type === 'etf' ? styles.typeBadgeEtf : styles.typeBadge}>{stock.type === 'etf' ? 'ETF' : '个股'}</span></td>
                   <td className={styles.tagsCell}>
                     {stock.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}
                   </td>
                   <td className={cp > 0 ? styles.priceUp : ''}>{cp > 0 ? cp.toFixed(2) : '-'}</td>
                   <td>{stock.holdingCost.toFixed(2)}</td>
                   <td>{stock.shares}</td>
-                  <td>{cp > 0 && stock.shares > 0 ? formatMoney(cp * stock.shares) : stock.marketCap > 0 ? formatMoney(stock.marketCap) : formatMoney(calc.costTotal)}</td>
+                  <td>{cp > 0 && stock.shares > 0 ? formatMoney(cp * stock.shares) : stock.type !== 'etf' && stock.marketCap > 0 ? formatMoney(stock.marketCap) : formatMoney(calc.costTotal)}</td>
                   <td className={calc.profitLoss >= 0 ? styles.up : styles.down}>{formatMoney(calc.profitLoss)}</td>
                   <td className={calc.profitLossPercent >= 0 ? styles.up : styles.down}>{formatPercent(calc.profitLossPercent)}</td>
                   <td>{calc.targetPrice > 0 ? calc.targetPrice.toFixed(2) : '-'}</td>
@@ -148,13 +150,17 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                 </tr>
                 {expanded.has(stock.id) && (
                   <tr className={styles.detailRow}>
-                    <td colSpan={14 + maxBuyBatches * 2 + maxTpBatches}>
+                    <td colSpan={15 + maxBuyBatches * 2 + maxTpBatches}>
                       <div className={styles.detailPanel}>
                         <div className={styles.detailSection}>
                           <span className={styles.detailLabel}>目标价:</span>
                           <span className={styles.detailValue}>{calc.targetPrice > 0 ? calc.targetPrice.toFixed(2) : '未设置'}</span>
-                          <span className={styles.detailLabel}>目标市值:</span>
-                          <span className={styles.detailValue}>{calc.targetMarketValue > 0 ? formatMoney(calc.targetMarketValue) : '未设置'}</span>
+                          {stock.type !== 'etf' && (
+                            <>
+                              <span className={styles.detailLabel}>目标市值:</span>
+                              <span className={styles.detailValue}>{calc.targetMarketValue > 0 ? formatMoney(calc.targetMarketValue) : '未设置'}</span>
+                            </>
+                          )}
                         </div>
                         <div className={styles.detailSection}>
                           <span className={styles.detailLabel}>成本总计:</span>

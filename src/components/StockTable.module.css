@@ -170,6 +170,26 @@
   color: var(--text-muted);
 }
 
+.typeBadge,
+.typeBadgeEtf {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.typeBadge {
+  background: rgba(26, 115, 232, 0.12);
+  color: #1a73e8;
+}
+
+.typeBadgeEtf {
+  background: rgba(28, 160, 81, 0.12);
+  color: #1ca051;
+}
+
 .tagsCell {
   max-width: 100px;
 }

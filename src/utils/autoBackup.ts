@@ -2,20 +2,35 @@ import { useEffect } from 'react';
 
 const BACKUP_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours
 
+const FLAT_KEYS = [
+  'stockvault_stocks', 'stockvault_funds',
+  'stockvault_stock_txs', 'stockvault_fund_txs',
+  'stockvault_stock_divs', 'stockvault_fund_divs',
+  'stockvault_watchlist', 'stockvault_notes',
+  'stockvault_accounts',
+];
+
+const NAMESPACED_PREFIXES = [
+  'stockvault_value_history',
+  'stockvault_pnl_calendar',
+];
+
 function doBackup() {
   try {
-    const keys = [
-      'stockvault_stocks', 'stockvault_funds',
-      'stockvault_stock_txs', 'stockvault_fund_txs',
-      'stockvault_stock_divs', 'stockvault_fund_divs',
-      'stockvault_value_history',
-      'stockvault_watchlist', 'stockvault_notes',
-      'stockvault_pnl_calendar', 'stockvault_accounts',
-    ];
     const obj: Record<string, unknown> = {};
-    for (const key of keys) {
+    for (const key of FLAT_KEYS) {
       const raw = localStorage.getItem(key);
       if (raw) obj[key] = JSON.parse(raw);
+    }
+    for (const prefix of NAMESPACED_PREFIXES) {
+      // Scan for all keys matching the prefix
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key === prefix || key.startsWith(prefix + '_'))) {
+          const raw = localStorage.getItem(key);
+          if (raw) obj[key] = JSON.parse(raw);
+        }
+      }
     }
     if (Object.keys(obj).length === 0) return;
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });

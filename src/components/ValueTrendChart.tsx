@@ -28,9 +28,9 @@ export default function ValueTrendChart({ type }: Props) {
         {type === 'stocks' ? '股票' : '基金'}市值走势
       </h3>
       <ResponsiveContainer width="100%" height={280}>
-        <LineChart data={data}>
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 4 }}>
           <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
-          <YAxis tickFormatter={formatValue} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={70} />
+          <YAxis tickFormatter={formatValue} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} width={56} />
           <Tooltip
             formatter={(v) => [formatValue(v as number), type === 'stocks' ? '股票市值' : '基金市值']}
             labelFormatter={(_label, payload) => {

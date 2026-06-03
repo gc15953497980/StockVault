@@ -87,8 +87,12 @@ export default function SyncPanel({ onDataChanged }: Props) {
         stockDividends: d.stockDivs as any,
         fundDividends: d.fundDivs as any,
       });
-      if (Array.isArray(d.valueHistory)) {
-        useValueHistoryStore.getState().setHistory(d.valueHistory as any);
+      // valueHistory is now Record<string, HistoryPoint[]> — reload current account
+      const activeId = useAccountStore.getState().activeAccountId;
+      const vhKey = activeId === 'default' ? 'stockvault_value_history' : `stockvault_value_history_${activeId}`;
+      const vhData = localStorage.getItem(vhKey);
+      if (vhData) {
+        try { useValueHistoryStore.getState().setHistory(JSON.parse(vhData)); } catch { /* ignore */ }
       }
       if (Array.isArray(d.watchlist)) {
         useWatchlistStore.getState().setItems(d.watchlist as any);
@@ -96,8 +100,11 @@ export default function SyncPanel({ onDataChanged }: Props) {
       if (d.notes && typeof d.notes === 'object') {
         useNotesStore.getState().setNotes(d.notes as any);
       }
-      if (Array.isArray(d.pnlCalendar)) {
-        usePnlCalendarStore.getState().setRecords(d.pnlCalendar as any);
+      // pnlCalendar is now Record<string, DailyPnl[]> — reload current account
+      const pnlKey = activeId === 'default' ? 'stockvault_pnl_calendar' : `stockvault_pnl_calendar_${activeId}`;
+      const pnlData = localStorage.getItem(pnlKey);
+      if (pnlData) {
+        try { usePnlCalendarStore.getState().setRecords(JSON.parse(pnlData)); } catch { /* ignore */ }
       }
       if (Array.isArray(d.accounts)) {
         useAccountStore.getState().setAccounts(d.accounts as any);

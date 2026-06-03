@@ -9,6 +9,7 @@ interface PriceResult {
   name: string;
   price: number;
   marketCap: number;
+  changePercent: number;
 }
 
 interface FundPriceResult {
@@ -40,10 +41,13 @@ export async function fetchStockPrices(
   while ((match = regex.exec(text)) !== null) {
     const code = match[1];
     const fields = match[2].split(',');
+    const price = parseFloat(fields[3]) || 0;
+    const prevClose = parseFloat(fields[2]) || price;
     result[code] = {
       name: fields[0],
-      price: parseFloat(fields[3]) || 0,
+      price,
       marketCap: parseFloat(fields[44]) || 0,
+      changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
     };
   }
   return result;
@@ -145,8 +149,10 @@ export async function fetchFundPrices(
       name: fields[0],
       currentNAV: parseFloat(fields[1]) || 0,
       accumulatedNAV: parseFloat(fields[2]) || 0,
-      dailyChange: parseFloat(fields[5]) || 0,
-      dailyChangePercent: parseFloat(fields[6]) || 0,
+      dailyChange: (parseFloat(fields[1]) || 0) - (parseFloat(fields[3]) || 0),
+      dailyChangePercent: fields[3] && parseFloat(fields[3]) !== 0
+        ? (((parseFloat(fields[1]) || 0) - parseFloat(fields[3])) / parseFloat(fields[3])) * 100
+        : 0,
     };
   }
   return result;

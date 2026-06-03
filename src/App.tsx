@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import StockView from './components/StockView';
-import FundView from './components/FundView';
+import HoldingsView from './components/HoldingsView';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import WatchlistView from './components/WatchlistView';
@@ -10,7 +9,7 @@ import { useAutoBackup } from './utils/autoBackup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import styles from './App.module.css';
 
-type Tab = 'dashboard' | 'stocks' | 'funds' | 'watchlist';
+type Tab = 'dashboard' | 'holdings' | 'watchlist';
 
 function getTheme(): 'light' | 'dark' {
   const stored = localStorage.getItem('stockvault_theme');
@@ -51,10 +50,9 @@ export default function App() {
   useAutoBackup();
 
   useKeyboardShortcuts({
-    '1': () => setActiveTab('stocks'),
-    '2': () => setActiveTab('funds'),
-    '3': () => setActiveTab('watchlist'),
-    '4': () => setActiveTab('dashboard'),
+    '1': () => setActiveTab('holdings'),
+    '2': () => setActiveTab('watchlist'),
+    '3': () => setActiveTab('dashboard'),
     '?': () => setShowShortcuts(v => !v),
   });
 
@@ -81,16 +79,10 @@ export default function App() {
           概览
         </button>
         <button
-          className={`${styles.tab} ${activeTab === 'stocks' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('stocks')}
+          className={`${styles.tab} ${activeTab === 'holdings' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('holdings')}
         >
-          股票
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'funds' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('funds')}
-        >
-          基金
+          持仓
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'watchlist' ? styles.tabActive : ''}`}
@@ -101,8 +93,7 @@ export default function App() {
       </nav>
 
       {activeTab === 'dashboard' && <Dashboard />}
-      {activeTab === 'stocks' && <StockView key={`stocks-${syncKey}`} />}
-      {activeTab === 'funds' && <FundView key={`funds-${syncKey}`} />}
+      {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
       {activeTab === 'watchlist' && <WatchlistView />}
 
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}

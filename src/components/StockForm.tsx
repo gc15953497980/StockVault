@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Stock, Market } from '../types';
+import type { Stock, Market, StockType } from '../types';
 import { TAG_PRESETS } from '../types';
 import { toStockCode } from '../utils/api';
 import styles from './StockForm.module.css';
@@ -12,12 +12,14 @@ interface Props {
 
 function emptyStock(): Stock {
   return {
-    id: '', code: '', name: '', shares: 0, holdingCost: 0,
+    id: '', code: '', name: '', type: 'stock', shares: 0, holdingCost: 0,
     targetPrice: 0, targetMarketValue: 0, marketCap: 0,
     buyPrices: [], buyShares: [], takeProfitPrices: [], takeProfitShares: [],
     tags: [], market: 'a',
   };
 }
+
+const TYPE_LABELS: Record<StockType, string> = { stock: '个股', etf: 'ETF' };
 
 export default function StockForm({ stock, onSave, onClose }: Props) {
   const [form, setForm] = useState<Stock>(stock ?? emptyStock());
@@ -103,9 +105,24 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
   return (
     <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>{stock ? '编辑股票' : '添加股票'}</h2>
+        <h2 className={styles.title}>{stock ? `编辑${TYPE_LABELS[stock.type]}` : '添加持仓'}</h2>
         <form onSubmit={handleSubmit}>
           <div className={styles.grid3}>
+            <div className={styles.field}>
+              <label>类型</label>
+              <div className={styles.typeToggle}>
+                {(['stock', 'etf'] as StockType[]).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`${styles.typeBtn} ${form.type === t ? styles.typeBtnActive : ''}`}
+                    onClick={() => setForm(prev => ({ ...prev, type: t }))}
+                  >
+                    {TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className={styles.field}>
               <label>市场</label>
               <select value={form.market} onChange={e => setForm(prev => ({ ...prev, market: e.target.value as Market }))}>
@@ -178,16 +195,18 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
               <input type="number" step="0.01" value={form.targetPrice || ''} onChange={(e) => set('targetPrice', parseFloat(e.target.value) || 0)} placeholder="选填" />
             </div>
           </div>
-          <div className={styles.grid2}>
-            <div className={styles.field}>
-              <label>目标市值</label>
-              <input type="number" step="0.01" value={form.targetMarketValue || ''} onChange={(e) => set('targetMarketValue', parseFloat(e.target.value) || 0)} placeholder="选填" />
+          {form.type === 'stock' && (
+            <div className={styles.grid2}>
+              <div className={styles.field}>
+                <label>目标市值</label>
+                <input type="number" step="0.01" value={form.targetMarketValue || ''} onChange={(e) => set('targetMarketValue', parseFloat(e.target.value) || 0)} placeholder="选填" />
+              </div>
+              <div className={styles.field}>
+                <label>当前市值（流通市值）</label>
+                <input type="number" step="0.01" value={form.marketCap || ''} onChange={(e) => set('marketCap', parseFloat(e.target.value) || 0)} placeholder="选填" />
+              </div>
             </div>
-            <div className={styles.field}>
-              <label>当前市值（流通市值）</label>
-              <input type="number" step="0.01" value={form.marketCap || ''} onChange={(e) => set('marketCap', parseFloat(e.target.value) || 0)} placeholder="选填" />
-            </div>
-          </div>
+          )}
 
           <div className={styles.sectionHeader}>
             <h3 className={styles.section}>分批买入</h3>

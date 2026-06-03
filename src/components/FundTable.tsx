@@ -151,7 +151,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
                   </tr>
                   {expanded.has(fund.id) && (
                     <tr className={styles.detailRow}>
-                      <td colSpan={16}>
+                      <td colSpan={15}>
                         <div className={styles.detailPanel}>
                           <div className={styles.detailSection}>
                             <span className={styles.detailLabel}>持有金额:</span>

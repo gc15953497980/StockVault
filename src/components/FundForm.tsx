@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Fund } from '../types';
-import { SECTOR_OPTIONS, TAG_PRESETS } from '../types';
+import { SECTOR_OPTIONS, TAG_PRESETS, FORMATION_OPTIONS } from '../types';
 import { toFundCode } from '../utils/api';
 import styles from './FundForm.module.css';
 
@@ -11,7 +11,7 @@ interface Props {
 }
 
 function emptyFund(): Fund {
-  return { id: '', code: '', name: '', sector: '', holdingAmount: 0, holdingCost: 0, tags: [] };
+  return { id: '', code: '', name: '', sector: '', formation: '', holdingAmount: 0, holdingCost: 0, tags: [] };
 }
 
 export default function FundForm({ fund, onSave, onClose }: Props) {
@@ -62,6 +62,14 @@ export default function FundForm({ fund, onSave, onClose }: Props) {
             <select value={form.sector} onChange={(e) => setForm((prev) => ({ ...prev, sector: e.target.value }))}>
               <option value="">-- 选择行业 --</option>
               {SECTOR_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div className={styles.field}>
+            <label>阵容分类</label>
+            <select value={form.formation} onChange={(e) => setForm((prev) => ({ ...prev, formation: e.target.value }))}>
+              <option value="">-- 选择阵容 --</option>
+              {FORMATION_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 

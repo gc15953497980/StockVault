@@ -1,9 +1,12 @@
 export type Market = 'a' | 'hk' | 'us';
 
+export type StockType = 'stock' | 'etf';
+
 export interface Stock {
   id: string;
   code: string;
   name: string;
+  type: StockType;
   shares: number;
   holdingCost: number;
   targetPrice: number;
@@ -15,6 +18,7 @@ export interface Stock {
   takeProfitShares: number[];
   tags: string[];
   market: Market;
+  accountId?: string;
 }
 
 export interface StockWithPrice extends Stock {
@@ -32,14 +36,21 @@ export interface StockCalculations {
   profitLossPercent: number;
 }
 
+export const FORMATION_OPTIONS = [
+  '中证A500', '沪深300', '红利', '双创', '恒科',
+  '中证500', '白酒', '黄金', '港消费', '其他',
+] as const;
+
 export interface Fund {
   id: string;
   code: string;
   name: string;
   sector: string;
+  formation: string;
   holdingAmount: number;
   holdingCost: number;
   tags: string[];
+  accountId?: string;
 }
 
 export const SECTOR_OPTIONS = [

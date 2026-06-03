@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Fund, FundWithPrice } from '../types';
 import { fetchFundPrices, fetchFundHistoryNAV, calcAvgDownside } from '../utils/api';
 import { pushToGist } from '../utils/gistSync';
+import { useAccountStore } from './useAccountStore';
 
 function autoSyncPush() {
   if (localStorage.getItem('stockvault_sync_auto') === '1') {
@@ -31,6 +32,11 @@ interface FundStore {
 
 const STORAGE_KEY = 'stockvault_funds';
 
+function filterByAccount(funds: Fund[], accountId: string): Fund[] {
+  if (accountId === 'default') return funds;
+  return funds.filter(f => f.accountId === accountId);
+}
+
 function loadFunds(): Fund[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -44,6 +50,7 @@ function loadFunds(): Fund[] {
         f.holdingCost = 0;
       }
       if (f.sector === undefined) f.sector = '';
+      if (f.formation === undefined) f.formation = '';
       if (f.tags === undefined) f.tags = [];
     }
     return funds;
@@ -58,113 +65,146 @@ function saveFunds(funds: Fund[]) {
   } catch { /* quota exceeded, ignore */ }
 }
 
-export const useFundStore = create<FundStore>((set, get) => ({
-  funds: loadFunds(),
-  navs: {},
-  accumulatedNAVs: {},
-  dailyChanges: {},
-  dailyChangePercents: {},
-  timestamps: {},
-  avgDownsides: {},
-  loading: false,
-  error: null,
+export const useFundStore = create<FundStore>((set, get) => {
+  const allFunds = loadFunds();
+  const activeId = useAccountStore.getState().activeAccountId;
 
-  addFund: (fund) => {
-    const funds = [...get().funds, fund];
-    saveFunds(funds);
-    set({ funds });
-    autoSyncPush();
-  },
+  // Subscribe to account changes to re-filter and refresh prices
+  useAccountStore.subscribe((state) => {
+    const filtered = filterByAccount(allFunds, state.activeAccountId);
+    set({ funds: filtered });
+    if (filtered.length > 0) {
+      get().refreshPrices().catch(() => {});
+    }
+  });
 
-  setFunds: (funds) => {
-    saveFunds(funds);
-    set({ funds });
-    autoSyncPush();
-  },
+  return {
+    funds: filterByAccount(allFunds, activeId),
+    navs: {},
+    accumulatedNAVs: {},
+    dailyChanges: {},
+    dailyChangePercents: {},
+    timestamps: {},
+    avgDownsides: {},
+    loading: false,
+    error: null,
 
-  updateFund: (fund) => {
-    const funds = get().funds.map((f) => (f.id === fund.id ? fund : f));
-    saveFunds(funds);
-    set({ funds });
-    autoSyncPush();
-  },
+    addFund: (fund) => {
+      const activeId = useAccountStore.getState().activeAccountId;
+      const tagged = activeId !== 'default' ? { ...fund, accountId: activeId } : fund;
+      const newAll = [...allFunds, tagged];
+      allFunds.length = 0;
+      allFunds.push(...newAll);
+      saveFunds(newAll);
+      set({ funds: filterByAccount(newAll, activeId) });
+      autoSyncPush();
+    },
 
-  deleteFund: (id) => {
-    const funds = get().funds.filter((f) => f.id !== id);
-    saveFunds(funds);
-    set({ funds });
-    autoSyncPush();
-  },
+    setFunds: (funds) => {
+      allFunds.length = 0;
+      allFunds.push(...funds);
+      saveFunds(funds);
+      set({ funds: filterByAccount(funds, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
 
-  refreshPrices: async () => {
-    const { funds } = get();
-    if (funds.length === 0) return;
-
-    set({ loading: true, error: null });
-    try {
-      const codes = funds.map((f) => f.code);
-      const result = await fetchFundPrices(codes);
-      const navs: Record<string, number> = {};
-      const accumulatedNAVs: Record<string, number> = {};
-      const dailyChanges: Record<string, number> = {};
-      const dailyChangePercents: Record<string, number> = {};
-      const timestamps: Record<string, number> = {};
-      let nameUpdated = false;
-      const updatedFunds = funds.map((f) => {
-        const data = result[f.code];
-        if (data) {
-          navs[f.code] = data.currentNAV;
-          accumulatedNAVs[f.code] = data.accumulatedNAV;
-          dailyChanges[f.code] = data.dailyChange;
-          dailyChangePercents[f.code] = data.dailyChangePercent;
-          timestamps[f.code] = Date.now();
-          if (!f.name && data.name) {
-            nameUpdated = true;
-            return { ...f, name: data.name };
-          }
+    updateFund: (fund) => {
+      const idx = allFunds.findIndex(f => f.id === fund.id);
+      if (idx !== -1) {
+        if (fund.accountId === undefined) {
+          fund = { ...fund, accountId: allFunds[idx].accountId };
         }
-        return f;
-      });
-      if (nameUpdated) {
-        saveFunds(updatedFunds);
+        allFunds[idx] = fund;
       }
-      set({
-        funds: nameUpdated ? updatedFunds : funds,
-        navs,
-        accumulatedNAVs,
-        dailyChanges,
-        dailyChangePercents,
-        timestamps,
-        loading: false,
-      });
-    } catch (e) {
-      set({ error: (e as Error).message, loading: false });
-    }
-  },
+      saveFunds(allFunds);
+      set({ funds: filterByAccount(allFunds, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
 
-  refreshHistoryNAVs: async () => {
-    const { funds } = get();
-    if (funds.length === 0) return;
+    deleteFund: (id) => {
+      const idx = allFunds.findIndex(f => f.id === id);
+      if (idx !== -1) allFunds.splice(idx, 1);
+      saveFunds(allFunds);
+      set({ funds: filterByAccount(allFunds, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
 
-    const avgDownsides: Record<string, number> = { ...get().avgDownsides };
+    refreshPrices: async () => {
+      const { funds } = get();
+      if (funds.length === 0) return;
 
-    for (const fund of funds) {
-      const history = await fetchFundHistoryNAV(fund.code);
-      avgDownsides[fund.code] = calcAvgDownside(history);
-    }
+      set({ loading: true, error: null });
+      try {
+        const codes = funds.map((f) => f.code);
+        const result = await fetchFundPrices(codes);
+        const navs: Record<string, number> = {};
+        const accumulatedNAVs: Record<string, number> = {};
+        const dailyChanges: Record<string, number> = {};
+        const dailyChangePercents: Record<string, number> = {};
+        const timestamps: Record<string, number> = {};
+        let nameUpdated = false;
+        const updatedFunds = allFunds.map((f) => {
+          const data = result[f.code];
+          if (data) {
+            if (codes.includes(f.code)) {
+              navs[f.code] = data.currentNAV;
+              accumulatedNAVs[f.code] = data.accumulatedNAV;
+              dailyChanges[f.code] = data.dailyChange;
+              dailyChangePercents[f.code] = data.dailyChangePercent;
+              timestamps[f.code] = Date.now();
+            }
+            if (!f.name && data.name) {
+              nameUpdated = true;
+              return { ...f, name: data.name };
+            }
+          }
+          return f;
+        });
+        if (nameUpdated) {
+          allFunds.length = 0;
+          allFunds.push(...updatedFunds);
+          saveFunds(updatedFunds);
+        }
+        set({
+          funds: nameUpdated
+            ? filterByAccount(updatedFunds, useAccountStore.getState().activeAccountId)
+            : funds,
+          navs,
+          accumulatedNAVs,
+          dailyChanges,
+          dailyChangePercents,
+          timestamps,
+          loading: false,
+        });
+      } catch (e) {
+        set({ error: (e as Error).message, loading: false });
+      }
+    },
 
-    set({ avgDownsides });
-  },
+    refreshHistoryNAVs: async () => {
+      const { funds } = get();
+      if (funds.length === 0) return;
 
-  getFundWithPrice: (fund) => {
-    const { navs, accumulatedNAVs, dailyChanges, dailyChangePercents, timestamps } = get();
-    return {
-      ...fund,
-      currentNAV: navs[fund.code] ?? 0,
-      accumulatedNAV: accumulatedNAVs[fund.code] ?? 0,
-      dailyChange: dailyChanges[fund.code] ?? 0,
-      dailyChangePercent: dailyChangePercents[fund.code] ?? 0,
-      timestamp: timestamps[fund.code] ?? 0,
-    };
-  },
-}));
+      const avgDownsides: Record<string, number> = { ...get().avgDownsides };
+
+      for (const fund of funds) {
+        const history = await fetchFundHistoryNAV(fund.code);
+        avgDownsides[fund.code] = calcAvgDownside(history);
+      }
+
+      set({ avgDownsides });
+    },
+
+    getFundWithPrice: (fund) => {
+      const { navs, accumulatedNAVs, dailyChanges, dailyChangePercents, timestamps } = get();
+      return {
+        ...fund,
+        currentNAV: navs[fund.code] ?? 0,
+        accumulatedNAV: accumulatedNAVs[fund.code] ?? 0,
+        dailyChange: dailyChanges[fund.code] ?? 0,
+        dailyChangePercent: dailyChangePercents[fund.code] ?? 0,
+        timestamp: timestamps[fund.code] ?? 0,
+      };
+    },
+  };
+});

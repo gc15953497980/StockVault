@@ -17,10 +17,10 @@ interface GistData {
   fundTxs?: unknown;
   stockDivs?: unknown;
   fundDivs?: unknown;
-  valueHistory?: unknown;
+  valueHistory?: Record<string, unknown>;
   watchlist?: unknown;
   notes?: unknown;
-  pnlCalendar?: unknown;
+  pnlCalendar?: Record<string, unknown>;
   accounts?: unknown;
   updatedAt: string;
 }
@@ -42,6 +42,31 @@ export function clearSyncConfig() {
   localStorage.removeItem(SYNC_KEY);
 }
 
+const LAST_SYNC_KEY = 'stockvault_last_sync';
+
+function getLastSyncTime(): string {
+  return localStorage.getItem(LAST_SYNC_KEY) || '2000-01-01T00:00:00.000Z';
+}
+
+function saveLastSyncTime() {
+  localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+}
+
+function collectNamespacedData(prefix: string): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (key === prefix) {
+      result['default'] = safeJSON(localStorage.getItem(key));
+    } else if (key.startsWith(prefix + '_')) {
+      const accountId = key.slice(prefix.length + 1);
+      result[accountId] = safeJSON(localStorage.getItem(key));
+    }
+  }
+  return result;
+}
+
 function getAllData(): GistData {
   return {
     stocks: safeJSON(localStorage.getItem('stockvault_stocks')),
@@ -50,12 +75,12 @@ function getAllData(): GistData {
     fundTxs: safeJSON(localStorage.getItem('stockvault_fund_txs')),
     stockDivs: safeJSON(localStorage.getItem('stockvault_stock_divs')),
     fundDivs: safeJSON(localStorage.getItem('stockvault_fund_divs')),
-    valueHistory: safeJSON(localStorage.getItem('stockvault_value_history')),
+    valueHistory: collectNamespacedData('stockvault_value_history'),
     watchlist: safeJSON(localStorage.getItem('stockvault_watchlist')),
     notes: safeJSON(localStorage.getItem('stockvault_notes')),
-    pnlCalendar: safeJSON(localStorage.getItem('stockvault_pnl_calendar')),
+    pnlCalendar: collectNamespacedData('stockvault_pnl_calendar'),
     accounts: safeJSON(localStorage.getItem('stockvault_accounts')),
-    updatedAt: new Date().toISOString(),
+    updatedAt: getLastSyncTime(),
   };
 }
 
@@ -89,6 +114,7 @@ export async function pushToGist(): Promise<{ success: boolean; message: string 
       return { success: false, message: (err as { message?: string }).message || `HTTP ${res.status}` };
     }
 
+    saveLastSyncTime();
     return { success: true, message: '同步成功' };
   } catch (e) {
     return { success: false, message: (e as Error).message };
@@ -118,29 +144,20 @@ export async function pullFromGist(): Promise<{ success: boolean; message: strin
     }
 
     const remote: GistData = JSON.parse(file.content);
-    const local = getAllData();
 
-    // Merge: take newer data for each section
-    const remoteTime = new Date(remote.updatedAt || '2000-01-01').getTime();
-    const localTime = new Date(local.updatedAt).getTime();
-
-    if (remoteTime <= localTime) {
-      return { success: true, message: '本地数据已是最新' };
-    }
-
-    // Remote is newer, merge all sections
     mergeData('stockvault_stocks', remote.stocks);
     mergeData('stockvault_funds', remote.funds);
     mergeData('stockvault_stock_txs', remote.stockTxs);
     mergeData('stockvault_fund_txs', remote.fundTxs);
     mergeData('stockvault_stock_divs', remote.stockDivs);
     mergeData('stockvault_fund_divs', remote.fundDivs);
-    mergeData('stockvault_value_history', remote.valueHistory);
+    mergeNamespacedData('stockvault_value_history', remote.valueHistory);
     mergeData('stockvault_watchlist', remote.watchlist);
     mergeData('stockvault_notes', remote.notes);
-    mergeData('stockvault_pnl_calendar', remote.pnlCalendar);
+    mergeNamespacedData('stockvault_pnl_calendar', remote.pnlCalendar);
     mergeData('stockvault_accounts', remote.accounts);
 
+    saveLastSyncTime();
     return { success: true, message: '拉取成功，数据已更新', data: remote };
   } catch (e) {
     return { success: false, message: (e as Error).message };
@@ -150,6 +167,15 @@ export async function pullFromGist(): Promise<{ success: boolean; message: strin
 function mergeData(key: string, remote: unknown) {
   if (remote === undefined || remote === null) return;
   localStorage.setItem(key, JSON.stringify(remote));
+}
+
+function mergeNamespacedData(prefix: string, remote: Record<string, unknown> | undefined) {
+  if (!remote || typeof remote !== 'object') return;
+  for (const [accountId, data] of Object.entries(remote)) {
+    if (data === undefined || data === null) continue;
+    const key = accountId === 'default' ? prefix : `${prefix}_${accountId}`;
+    localStorage.setItem(key, JSON.stringify(data));
+  }
 }
 
 export async function createGist(token: string): Promise<{ success: boolean; gistId?: string; message: string }> {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { DailyPnl } from '../types';
 import { useStockStore } from './useStockStore';
 import { useFundStore } from './useFundStore';
+import { useAccountStore } from './useAccountStore';
 
 interface PnlCalendarStore {
   records: DailyPnl[];
@@ -9,11 +10,16 @@ interface PnlCalendarStore {
   setRecords: (records: DailyPnl[]) => void;
 }
 
-const STORAGE_KEY = 'stockvault_pnl_calendar';
+const BASE_KEY = 'stockvault_pnl_calendar';
+
+function getKey(): string {
+  const accountId = useAccountStore.getState().activeAccountId;
+  return accountId === 'default' ? BASE_KEY : `${BASE_KEY}_${accountId}`;
+}
 
 function load(): DailyPnl[] {
   try {
-    const d = localStorage.getItem(STORAGE_KEY);
+    const d = localStorage.getItem(getKey());
     if (!d) return [];
     const arr: DailyPnl[] = JSON.parse(d);
     const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
@@ -22,48 +28,55 @@ function load(): DailyPnl[] {
 }
 
 function save(records: DailyPnl[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); } catch { /* ignore */ }
+  try { localStorage.setItem(getKey(), JSON.stringify(records)); } catch { /* ignore */ }
 }
 
-export const usePnlCalendarStore = create<PnlCalendarStore>((set, get) => ({
-  records: load(),
+export const usePnlCalendarStore = create<PnlCalendarStore>((set, get) => {
+  // Subscribe to account changes to reload records for new account
+  useAccountStore.subscribe(() => {
+    set({ records: load() });
+  });
 
-  recordToday: () => {
-    const { stocks, prices } = useStockStore.getState();
-    const { funds, navs } = useFundStore.getState();
+  return {
+    records: load(),
 
-    let totalValue = 0;
-    let totalCost = 0;
+    recordToday: () => {
+      const { stocks, prices } = useStockStore.getState();
+      const { funds, navs } = useFundStore.getState();
 
-    for (const s of stocks) {
-      const cp = prices[s.code] ?? 0;
-      const mv = cp * s.shares || s.holdingCost * s.shares;
-      totalValue += mv;
-      totalCost += s.holdingCost * s.shares;
-    }
+      let totalValue = 0;
+      let totalCost = 0;
 
-    for (const f of funds) {
-      const nav = navs[f.code] ?? 0;
-      const mv = nav > 0 && f.holdingCost > 0 ? (f.holdingAmount / f.holdingCost) * nav : f.holdingAmount;
-      totalValue += mv;
-      totalCost += f.holdingAmount;
-    }
+      for (const s of stocks) {
+        const cp = prices[s.code] ?? 0;
+        const mv = cp * s.shares || s.holdingCost * s.shares;
+        totalValue += mv;
+        totalCost += s.holdingCost * s.shares;
+      }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const pnl = totalValue - totalCost;
-    const pnlPercent = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+      for (const f of funds) {
+        const nav = navs[f.code] ?? 0;
+        const mv = nav > 0 && f.holdingCost > 0 ? (f.holdingAmount / f.holdingCost) * nav : f.holdingAmount;
+        totalValue += mv;
+        totalCost += f.holdingAmount;
+      }
 
-    const records = get().records.filter(r => r.date !== today);
-    records.push({ date: today, pnl, pnlPercent });
+      const today = new Date().toISOString().slice(0, 10);
+      const pnl = totalValue - totalCost;
+      const pnlPercent = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
 
-    const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
-    const filtered = records.filter(r => new Date(r.date).getTime() > cutoff);
-    save(filtered);
-    set({ records: filtered });
-  },
+      const records = get().records.filter(r => r.date !== today);
+      records.push({ date: today, pnl, pnlPercent });
 
-  setRecords: (records) => {
-    save(records);
-    set({ records });
-  },
-}));
+      const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
+      const filtered = records.filter(r => new Date(r.date).getTime() > cutoff);
+      save(filtered);
+      set({ records: filtered });
+    },
+
+    setRecords: (records) => {
+      save(records);
+      set({ records });
+    },
+  };
+});

@@ -16,7 +16,7 @@ export default function AccountSwitcher() {
 
   // Ensure 'default' account exists
   const allAccounts = [
-    { id: 'default', name: '默认账户', createdAt: '' },
+    { id: 'default', name: '总计', createdAt: '' },
     ...accounts,
   ];
 

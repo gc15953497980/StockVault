@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Stock, StockWithPrice } from '../types';
 import { fetchStockPrices } from '../utils/api';
 import { pushToGist } from '../utils/gistSync';
+import { useAccountStore } from './useAccountStore';
 
 function autoSyncPush() {
   if (localStorage.getItem('stockvault_sync_auto') === '1') {
@@ -13,6 +14,7 @@ interface StockStore {
   stocks: Stock[];
   prices: Record<string, number>;
   marketCaps: Record<string, number>;
+  dailyChangePercents: Record<string, number>;
   timestamps: Record<string, number>;
   loading: boolean;
   error: string | null;
@@ -27,6 +29,11 @@ interface StockStore {
 
 const STORAGE_KEY = 'stockvault_stocks';
 
+function filterByAccount(stocks: Stock[], accountId: string): Stock[] {
+  if (accountId === 'default') return stocks;
+  return stocks.filter(s => s.accountId === accountId);
+}
+
 function loadStocks(): Stock[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -37,6 +44,7 @@ function loadStocks(): Stock[] {
       if (s.marketCap === undefined) s.marketCap = 0;
       if (s.tags === undefined) s.tags = [];
       if (s.market === undefined) s.market = 'a';
+      if (s.type === undefined) s.type = 'stock';
       if (s.buyPrices === undefined) {
         s.buyPrices = [];
         s.buyShares = [];
@@ -74,71 +82,102 @@ function saveStocks(stocks: Stock[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stocks));
 }
 
-export const useStockStore = create<StockStore>((set, get) => ({
-  stocks: loadStocks(),
-  prices: {},
-  marketCaps: {},
-  timestamps: {},
-  loading: false,
-  error: null,
+export const useStockStore = create<StockStore>((set, get) => {
+  const allStocks = loadStocks();
+  const activeId = useAccountStore.getState().activeAccountId;
 
-  addStock: (stock) => {
-    const stocks = [...get().stocks, stock];
-    saveStocks(stocks);
-    set({ stocks });
-    autoSyncPush();
-  },
-
-  setStocks: (stocks) => {
-    saveStocks(stocks);
-    set({ stocks });
-    autoSyncPush();
-  },
-
-  updateStock: (stock) => {
-    const stocks = get().stocks.map((s) => (s.id === stock.id ? stock : s));
-    saveStocks(stocks);
-    set({ stocks });
-    autoSyncPush();
-  },
-
-  deleteStock: (id) => {
-    const stocks = get().stocks.filter((s) => s.id !== id);
-    saveStocks(stocks);
-    set({ stocks });
-    autoSyncPush();
-  },
-
-  refreshPrices: async () => {
-    const { stocks } = get();
-    if (stocks.length === 0) return;
-
-    set({ loading: true, error: null });
-    try {
-      const codes = stocks.map((s) => s.code);
-      const result = await fetchStockPrices(codes);
-      const prices: Record<string, number> = {};
-      const marketCaps: Record<string, number> = {};
-      const timestamps: Record<string, number> = {};
-      for (const code of codes) {
-        if (result[code]) {
-          prices[code] = result[code].price;
-          marketCaps[code] = result[code].marketCap;
-          timestamps[code] = Date.now();
-        }
-      }
-      set({ prices, marketCaps, timestamps, loading: false });
-    } catch (e) {
-      set({ error: (e as Error).message, loading: false });
+  // Subscribe to account changes to re-filter and refresh prices
+  useAccountStore.subscribe((state) => {
+    const filtered = filterByAccount(allStocks, state.activeAccountId);
+    set({ stocks: filtered });
+    if (filtered.length > 0) {
+      get().refreshPrices().catch(() => {});
     }
-  },
+  });
 
-  getStockWithPrice: (stock) => {
-    const { prices, timestamps } = get();
-    return {
-      ...stock,
-      currentPrice: prices[stock.code] ?? 0,
-      timestamp: timestamps[stock.code] ?? 0,
-    };
-  },
-}));
+  return {
+    stocks: filterByAccount(allStocks, activeId),
+    prices: {},
+    marketCaps: {},
+    dailyChangePercents: {},
+    timestamps: {},
+    loading: false,
+    error: null,
+
+    addStock: (stock) => {
+      const activeId = useAccountStore.getState().activeAccountId;
+      const tagged = activeId !== 'default' ? { ...stock, accountId: activeId } : stock;
+      const newAll = [...allStocks, tagged];
+      // Update the mutable allStocks reference
+      allStocks.length = 0;
+      allStocks.push(...newAll);
+      saveStocks(newAll);
+      set({ stocks: filterByAccount(newAll, activeId) });
+      autoSyncPush();
+    },
+
+    setStocks: (stocks) => {
+      allStocks.length = 0;
+      allStocks.push(...stocks);
+      saveStocks(stocks);
+      set({ stocks: filterByAccount(stocks, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
+
+    updateStock: (stock) => {
+      const idx = allStocks.findIndex(s => s.id === stock.id);
+      if (idx !== -1) {
+        if (stock.accountId === undefined) {
+          stock = { ...stock, accountId: allStocks[idx].accountId };
+        }
+        allStocks[idx] = stock;
+      }
+      saveStocks(allStocks);
+      set({ stocks: filterByAccount(allStocks, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
+
+    deleteStock: (id) => {
+      const idx = allStocks.findIndex(s => s.id === id);
+      if (idx !== -1) allStocks.splice(idx, 1);
+      saveStocks(allStocks);
+      set({ stocks: filterByAccount(allStocks, useAccountStore.getState().activeAccountId) });
+      autoSyncPush();
+    },
+
+    refreshPrices: async () => {
+      const { stocks } = get();
+      if (stocks.length === 0) return;
+
+      set({ loading: true, error: null });
+      try {
+        const codes = stocks.map((s) => s.code);
+        const result = await fetchStockPrices(codes);
+        const prices: Record<string, number> = {};
+        const marketCaps: Record<string, number> = {};
+        const dailyChangePercents: Record<string, number> = {};
+        const timestamps: Record<string, number> = {};
+        for (const code of codes) {
+          if (result[code]) {
+            prices[code] = result[code].price;
+            marketCaps[code] = result[code].marketCap;
+            dailyChangePercents[code] = result[code].changePercent;
+            timestamps[code] = Date.now();
+          }
+        }
+        set({ prices, marketCaps, dailyChangePercents, timestamps, loading: false });
+      } catch (e) {
+        set({ error: (e as Error).message, loading: false });
+      }
+    },
+
+    getStockWithPrice: (stock) => {
+      const { prices, timestamps } = get();
+      return {
+        ...stock,
+        currentPrice: prices[stock.code] ?? 0,
+        timestamp: timestamps[stock.code] ?? 0,
+      };
+    },
+  };
+});

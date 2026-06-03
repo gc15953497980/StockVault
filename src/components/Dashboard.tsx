@@ -7,18 +7,19 @@ import { calcStock, calcFund, formatMoney, formatPercent } from '../utils/api';
 import PnlCalendar from './PnlCalendar';
 import styles from './Dashboard.module.css';
 
-const PIE_COLORS = ['#1a73e8', '#e83929', '#1ca051'];
+const PIE_COLORS = ['#1a73e8', '#1ca051', '#e83929', '#ff9900'];
 
 export default function Dashboard() {
   const stocks = useStockStore(s => s.stocks);
   const stockPrices = useStockStore(s => s.prices);
+  const stockDailyChanges = useStockStore(s => s.dailyChangePercents);
   const funds = useFundStore(s => s.funds);
   const fundNavs = useFundStore(s => s.navs);
   const fundChangePercents = useFundStore(s => s.dailyChangePercents);
   const history = useValueHistoryStore(s => s.history);
 
-  const { totalValue, totalCost, totalPL, totalPLPct, stockValue, fundValue, topGainers, topLosers } = useMemo(() => {
-    let totalValue = 0, totalCost = 0, stockValue = 0, fundValue = 0;
+  const { totalValue, totalCost, totalPL, totalPLPct, stockValue, etfValue, fundValue, topGainers, topLosers } = useMemo(() => {
+    let totalValue = 0, totalCost = 0, stockValue = 0, etfValue = 0, fundValue = 0;
     const perf: { name: string; pl: number; plPct: number; dailyChange: number }[] = [];
 
     for (const s of stocks) {
@@ -26,8 +27,9 @@ export default function Dashboard() {
       const calc = calcStock(cp, s.holdingCost, s.shares, s.targetPrice, s.targetMarketValue);
       totalValue += calc.currentMarketValue;
       totalCost += calc.costTotal;
-      stockValue += calc.currentMarketValue;
-      perf.push({ name: s.name, pl: calc.profitLoss, plPct: calc.profitLossPercent, dailyChange: 0 });
+      if (s.type === 'etf') etfValue += calc.currentMarketValue;
+      else stockValue += calc.currentMarketValue;
+      perf.push({ name: s.name, pl: calc.profitLoss, plPct: calc.profitLossPercent, dailyChange: stockDailyChanges[s.code] ?? 0 });
     }
 
     for (const f of funds) {
@@ -51,8 +53,8 @@ export default function Dashboard() {
     const topGainers = sortedByDaily.filter(p => p.dailyChange > 0).slice(0, 3);
     const topLosers = sortedByDaily.filter(p => p.dailyChange <= 0).sort((a, b) => a.dailyChange - b.dailyChange).slice(0, 3);
 
-    return { totalValue, totalCost, totalPL, totalPLPct, stockValue, fundValue, topGainers, topLosers };
-  }, [stocks, stockPrices, funds, fundNavs, fundChangePercents]);
+    return { totalValue, totalCost, totalPL, totalPLPct, stockValue, etfValue, fundValue, topGainers, topLosers };
+  }, [stocks, stockPrices, stockDailyChanges, funds, fundNavs, fundChangePercents]);
 
   const totalTrend = useMemo(() => {
     return history.map(p => ({
@@ -63,6 +65,7 @@ export default function Dashboard() {
 
   const allocationData = [
     { name: '股票', value: stockValue },
+    { name: 'ETF', value: etfValue },
     { name: '基金', value: fundValue },
   ].filter(d => d.value > 0);
 
