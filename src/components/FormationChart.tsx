@@ -1,6 +1,6 @@
 import { useMemo, useId } from 'react';
 import { useFundStore } from '../store/useFundStore';
-import { FORMATION_OPTIONS } from '../types';
+import { useStockStore } from '../store/useStockStore';
 
 interface CategoryDef {
   name: string;
@@ -73,6 +73,8 @@ const MAX_RADIUS = 36;
 export default function FormationChart() {
   const funds = useFundStore(s => s.funds);
   const navs = useFundStore(s => s.navs);
+  const stocks = useStockStore(s => s.stocks);
+  const prices = useStockStore(s => s.prices);
   const patternId = useId().replace(/:/g, '');
 
   const data = useMemo(() => {
@@ -80,6 +82,8 @@ export default function FormationChart() {
     CATEGORIES.forEach((c, i) => { catIndex[c.name] = i; });
 
     const map: Record<number, number> = {};
+
+    // 基金市值
     for (const f of funds) {
       const nav = navs[f.code] ?? 0;
       const mv = nav > 0 && f.holdingCost > 0
@@ -88,6 +92,19 @@ export default function FormationChart() {
       const idx = f.formation && catIndex[f.formation] !== undefined
         ? catIndex[f.formation]
         : classifyFund(f.name);
+      if (idx >= 0) {
+        map[idx] = (map[idx] || 0) + mv;
+      } else {
+        map[-1] = (map[-1] || 0) + mv;
+      }
+    }
+
+    // 股票市值
+    for (const s of stocks) {
+      const cp = prices[s.code] ?? 0;
+      const mv = cp > 0 ? cp * s.shares : s.holdingCost * s.shares;
+      if (mv <= 0) continue;
+      const idx = classifyFund(s.name);
       if (idx >= 0) {
         map[idx] = (map[idx] || 0) + mv;
       } else {
@@ -108,9 +125,9 @@ export default function FormationChart() {
     }));
 
     return { categories, maxVal, total: entries.reduce((s, e) => s + e.value, 0) };
-  }, [funds, navs]);
+  }, [funds, navs, stocks, prices]);
 
-  if (funds.length === 0 || data.categories.length === 0) return null;
+  if ((funds.length === 0 && stocks.length === 0) || data.categories.length === 0) return null;
 
   const onField = data.categories
     .filter(c => c.idx !== -1)
