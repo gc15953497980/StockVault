@@ -40,6 +40,7 @@ function loadStocks(): Stock[] {
     if (!data) return [];
     const stocks = JSON.parse(data);
     for (const s of stocks) {
+      if (s.formation === undefined) s.formation = '';
       if (s.targetMarketValue === undefined) s.targetMarketValue = 0;
       if (s.marketCap === undefined) s.marketCap = 0;
       if (s.tags === undefined) s.tags = [];

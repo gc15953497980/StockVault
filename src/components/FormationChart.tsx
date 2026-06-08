@@ -1,6 +1,7 @@
 import { useMemo, useId } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { useStockStore } from '../store/useStockStore';
+import { FORMATION_OPTIONS } from '../types';
 
 interface CategoryDef {
   name: string;
@@ -104,7 +105,9 @@ export default function FormationChart() {
       const cp = prices[s.code] ?? 0;
       const mv = cp > 0 ? cp * s.shares : s.holdingCost * s.shares;
       if (mv <= 0) continue;
-      const idx = classifyFund(s.name);
+      const idx = s.formation && catIndex[s.formation] !== undefined
+        ? catIndex[s.formation]
+        : classifyFund(s.name);
       if (idx >= 0) {
         map[idx] = (map[idx] || 0) + mv;
       } else {

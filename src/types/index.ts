@@ -7,6 +7,7 @@ export interface Stock {
   code: string;
   name: string;
   type: StockType;
+  formation: string;
   shares: number;
   holdingCost: number;
   targetPrice: number;

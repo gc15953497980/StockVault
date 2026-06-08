@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Stock, Market, StockType } from '../types';
-import { TAG_PRESETS } from '../types';
+import { TAG_PRESETS, FORMATION_OPTIONS } from '../types';
 import { toStockCode } from '../utils/api';
 import styles from './StockForm.module.css';
 
@@ -12,7 +12,7 @@ interface Props {
 
 function emptyStock(): Stock {
   return {
-    id: '', code: '', name: '', type: 'stock', shares: 0, holdingCost: 0,
+    id: '', code: '', name: '', type: 'stock', formation: '', shares: 0, holdingCost: 0,
     targetPrice: 0, targetMarketValue: 0, marketCap: 0,
     buyPrices: [], buyShares: [], takeProfitPrices: [], takeProfitShares: [],
     tags: [], market: 'a',
@@ -129,6 +129,13 @@ export default function StockForm({ stock, onSave, onClose }: Props) {
                 <option value="a">A股</option>
                 <option value="hk">港股</option>
                 <option value="us">美股</option>
+              </select>
+            </div>
+            <div className={styles.field}>
+              <label>阵容分类</label>
+              <select value={form.formation} onChange={e => setForm(prev => ({ ...prev, formation: e.target.value }))}>
+                <option value="">-- 选择阵容 --</option>
+                {FORMATION_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className={styles.field}>
