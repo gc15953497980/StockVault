@@ -25,7 +25,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   const timestamps = useFundStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showDivCompare, setShowDivCompare] = useState<string | null>(null);
 
   const filtered = useMemo(() =>
@@ -39,12 +39,10 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   };
 
   const toggleExpand = (id: string) => {
-    console.log('FundTable toggleExpand', id, 'expanded before:', [...expanded]);
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      console.log('FundTable setExpanded', [...next]);
+    setExpanded(prev => {
+      const next = { ...prev };
+      if (next[id]) delete next[id];
+      else next[id] = true;
       return next;
     });
   };
@@ -153,7 +151,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
                       <button className={styles.btnDel} onClick={() => onDelete(fund.id)}>删除</button>
                     </td>
                   </tr>
-                  {expanded.has(fund.id) && (
+                  {expanded[fund.id] && (
                     <tr className={styles.detailRow}>
                       <td colSpan={15}>
                         <div className={styles.detailPanel}>
