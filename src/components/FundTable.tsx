@@ -118,10 +118,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
               return (
                 <>
                   <tr key={fund.id}>
-                    <td>
-                      <button className={styles.detailToggle} onClick={() => toggleExpand(fund.id)}>
-                        {expanded.has(fund.id) ? '▼' : '▶'}
-                      </button>
+                    <td className={styles.fundCell} onClick={() => toggleExpand(fund.id)}>
                       <span className={styles.fundName}>{hideNames ? '***' : (fund.name || fund.code)}</span>
                       <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
                     </td>

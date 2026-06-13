@@ -59,6 +59,10 @@
   background: var(--surface-hover);
 }
 
+.fundCell {
+  cursor: pointer;
+}
+
 .fundName {
   font-weight: 600;
   color: var(--text);
@@ -123,15 +127,6 @@
   padding: 60px 20px;
   color: var(--text-muted);
   font-size: 15px;
-}
-
-.detailToggle {
-  background: none;
-  border: none;
-  color: var(--primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 2px 6px;
 }
 
 .detailRow td {
