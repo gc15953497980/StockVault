@@ -67,7 +67,35 @@ export default function PnlCalendar() {
     else setMonth(m => m + 1);
   };
 
-  if (records.length === 0) return null;
+  if (records.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <button onClick={prevMonth} className={styles.navBtn}>&lt;</button>
+          <span className={styles.title}>{year}年{month}月</span>
+          <button onClick={nextMonth} className={styles.navBtn}>&gt;</button>
+          <span className={styles.monthPnl}>月盈亏 --</span>
+        </div>
+        <div className={styles.weekDays}>
+          {weekDays.map(d => <div key={d} className={styles.weekDay}>{d}</div>)}
+        </div>
+        <div className={styles.grid}>
+          {grid.map((week, wi) =>
+            week.map((cell, ci) => (
+              <div key={`${wi}-${ci}`} className={`${styles.cell} ${cell.day === 0 ? styles.empty : ''}`}>
+                {cell.day > 0 ? <span className={styles.dayNum}>{cell.day}</span> : null}
+              </div>
+            ))
+          )}
+        </div>
+        <div className={styles.legend}>
+          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(28,160,81,0.6)' }} /> 盈利</span>
+          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(232,57,41,0.6)' }} /> 亏损</span>
+          <span className={styles.legendItem}>颜色越深幅度越大</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -89,7 +117,7 @@ export default function PnlCalendar() {
               key={`${wi}-${ci}`}
               className={`${styles.cell} ${cell.day === 0 ? styles.empty : ''}`}
               style={cell.day > 0 ? { background: intensity(cell.pnl) } : undefined}
-              title={cell.date ? `${cell.date} 盈亏: ${cell.pnl.toFixed(2)} (${cell.pnlPercent.toFixed(2)}%)` : ''}
+              title={cell.date ? `${cell.date} 日盈亏: ${cell.pnl >= 0 ? '+' : ''}${cell.pnl.toFixed(2)} (${cell.pnlPercent >= 0 ? '+' : ''}${cell.pnlPercent.toFixed(2)}%)` : ''}
             >
               {cell.day > 0 ? <span className={styles.dayNum}>{cell.day}</span> : null}
             </div>

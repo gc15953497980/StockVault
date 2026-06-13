@@ -7,6 +7,7 @@ import AccountSwitcher from './components/AccountSwitcher';
 import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePnlCalendarStore } from './store/usePnlCalendarStore';
 import styles from './App.module.css';
 
 type Tab = 'dashboard' | 'holdings' | 'watchlist';
@@ -48,6 +49,14 @@ export default function App() {
   }, []);
 
   useAutoBackup();
+
+  // Auto-record daily PnL snapshot on mount (after prices load)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      usePnlCalendarStore.getState().recordToday();
+    }, 8000); // Wait for initial price fetch to complete
+    return () => clearTimeout(timer);
+  }, []);
 
   useKeyboardShortcuts({
     '1': () => setActiveTab('holdings'),
