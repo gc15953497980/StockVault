@@ -162,7 +162,7 @@ export default function Dashboard() {
                   <span className={styles.perfName}>{p.name}</span>
                   <span className={styles.perfValue}>
                     <span className={styles.up}>+{p.dailyChange.toFixed(2)}%</span>
-                    <span className={styles.perfAmount}>{p.dailyAmount >= 0 ? '+' : ''}{formatMoney(p.dailyAmount)}</span>
+                    <span className={styles.perfAmount}>{p.dailyAmount >= 0 ? '+¥' : '-¥'}{formatMoney(Math.abs(p.dailyAmount))}</span>
                   </span>
                 </div>
               )) : <div className={styles.empty}>暂无</div>}
@@ -174,7 +174,7 @@ export default function Dashboard() {
                   <span className={styles.perfName}>{p.name}</span>
                   <span className={styles.perfValue}>
                     <span className={styles.down}>{p.dailyChange.toFixed(2)}%</span>
-                    <span className={styles.perfAmount}>{formatMoney(p.dailyAmount)}</span>
+                    <span className={styles.perfAmount}>{p.dailyAmount >= 0 ? '+¥' : '-¥'}{formatMoney(Math.abs(p.dailyAmount))}</span>
                   </span>
                 </div>
               )) : <div className={styles.empty}>暂无</div>}

@@ -61,9 +61,9 @@ export default function PnlCalendar() {
     if (pnl === 0) return '';
     const abs = Math.abs(pnl);
     const sign = pnl > 0 ? '+' : '-';
-    if (abs >= 1e4) return sign + (abs / 1e4).toFixed(1) + '万';
-    if (abs >= 1e3) return sign + (abs / 1e3).toFixed(1) + 'k';
-    return sign + abs.toFixed(0);
+    if (abs >= 1e4) return sign + '¥' + (abs / 1e4).toFixed(1) + '万';
+    if (abs >= 1e3) return sign + '¥' + (abs / 1e3).toFixed(1) + 'k';
+    return sign + '¥' + abs.toFixed(0);
   };
 
   const prevMonth = () => {
