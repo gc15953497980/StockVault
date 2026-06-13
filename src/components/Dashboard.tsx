@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   const { totalValue, totalCost, totalPL, totalPLPct, stockValue, etfValue, fundValue, topGainers, topLosers } = useMemo(() => {
     let totalValue = 0, totalCost = 0, stockValue = 0, etfValue = 0, fundValue = 0;
-    const perf: { name: string; pl: number; plPct: number; dailyChange: number }[] = [];
+    const perf: { name: string; pl: number; plPct: number; dailyChange: number; dailyAmount: number; }[] = [];
 
     for (const s of stocks) {
       const cp = stockPrices[s.code] ?? 0;
@@ -29,7 +29,9 @@ export default function Dashboard() {
       totalCost += calc.costTotal;
       if (s.type === 'etf') etfValue += calc.currentMarketValue;
       else stockValue += calc.currentMarketValue;
-      perf.push({ name: s.name, pl: calc.profitLoss, plPct: calc.profitLossPercent, dailyChange: stockDailyChanges[s.code] ?? 0 });
+      const dailyChange = stockDailyChanges[s.code] ?? 0;
+      const mv = cp > 0 ? cp * s.shares : s.holdingCost * s.shares;
+      perf.push({ name: s.name, pl: calc.profitLoss, plPct: calc.profitLossPercent, dailyChange, dailyAmount: mv * dailyChange / 100 });
     }
 
     for (const f of funds) {
@@ -38,11 +40,13 @@ export default function Dashboard() {
       totalValue += calc.marketValue;
       totalCost += calc.costTotal;
       fundValue += calc.marketValue;
+      const dailyChange = fundChangePercents[f.code] ?? 0;
       perf.push({
         name: f.name || f.code,
         pl: calc.profitLoss,
         plPct: calc.profitLossPercent,
-        dailyChange: fundChangePercents[f.code] ?? 0,
+        dailyChange,
+        dailyAmount: calc.marketValue * dailyChange / 100,
       });
     }
 
@@ -155,8 +159,11 @@ export default function Dashboard() {
               <h4>今日涨幅 Top 3</h4>
               {topGainers.length > 0 ? topGainers.map((p, i) => (
                 <div key={i} className={styles.perfRow}>
-                  <span>{p.name}</span>
-                  <span className={styles.up}>+{p.dailyChange.toFixed(2)}%</span>
+                  <span className={styles.perfName}>{p.name}</span>
+                  <span className={styles.perfValue}>
+                    <span className={styles.up}>+{p.dailyChange.toFixed(2)}%</span>
+                    <span className={styles.perfAmount}>{p.dailyAmount >= 0 ? '+' : ''}{formatMoney(p.dailyAmount)}</span>
+                  </span>
                 </div>
               )) : <div className={styles.empty}>暂无</div>}
             </div>
@@ -164,8 +171,11 @@ export default function Dashboard() {
               <h4>今日跌幅 Top 3</h4>
               {topLosers.length > 0 ? topLosers.map((p, i) => (
                 <div key={i} className={styles.perfRow}>
-                  <span>{p.name}</span>
-                  <span className={styles.down}>{p.dailyChange.toFixed(2)}%</span>
+                  <span className={styles.perfName}>{p.name}</span>
+                  <span className={styles.perfValue}>
+                    <span className={styles.down}>{p.dailyChange.toFixed(2)}%</span>
+                    <span className={styles.perfAmount}>{formatMoney(p.dailyAmount)}</span>
+                  </span>
                 </div>
               )) : <div className={styles.empty}>暂无</div>}
             </div>

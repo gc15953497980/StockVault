@@ -57,6 +57,14 @@ export default function PnlCalendar() {
     }
   };
 
+  const compactPnl = (pnl: number): string => {
+    if (pnl === 0) return '';
+    const abs = Math.abs(pnl);
+    if (abs >= 1e4) return (pnl / 1e4).toFixed(1) + '万';
+    if (abs >= 1e3) return (pnl / 1e3).toFixed(1) + 'k';
+    return pnl.toFixed(0);
+  };
+
   const prevMonth = () => {
     if (month === 1) { setMonth(12); setYear(y => y - 1); }
     else setMonth(m => m - 1);
@@ -119,7 +127,12 @@ export default function PnlCalendar() {
               style={cell.day > 0 ? { background: intensity(cell.pnl) } : undefined}
               title={cell.date ? `${cell.date} 日盈亏: ${cell.pnl >= 0 ? '+' : ''}${cell.pnl.toFixed(2)} (${cell.pnlPercent >= 0 ? '+' : ''}${cell.pnlPercent.toFixed(2)}%)` : ''}
             >
-              {cell.day > 0 ? <span className={styles.dayNum}>{cell.day}</span> : null}
+              {cell.day > 0 && (
+                <>
+                  <span className={styles.dayNum}>{cell.day}</span>
+                  {cell.pnl !== 0 && <span className={styles.pnlAmount}>{compactPnl(cell.pnl)}</span>}
+                </>
+              )}
             </div>
           ))
         )}
