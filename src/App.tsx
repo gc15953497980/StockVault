@@ -8,7 +8,9 @@ import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePnlCalendarStore } from './store/usePnlCalendarStore';
+import { useValueHistoryStore } from './store/useValueHistoryStore';
 import { useStockStore } from './store/useStockStore';
+import { useFundStore } from './store/useFundStore';
 import styles from './App.module.css';
 
 type Tab = 'dashboard' | 'holdings' | 'watchlist';
@@ -51,19 +53,41 @@ export default function App() {
 
   useAutoBackup();
 
-  // Auto-record daily PnL snapshot once prices are loaded
+  // Periodic auto-refresh + daily PnL snapshot (runs regardless of active tab)
   useEffect(() => {
+    const INTERVAL = 30 * 60 * 1000; // 30 minutes
+
+    async function refreshAndRecord() {
+      if (document.hidden) return;
+      try {
+        await Promise.all([
+          useStockStore.getState().refreshPrices(),
+          useFundStore.getState().refreshPrices(),
+        ]);
+      } catch { /* ignore */ }
+      useValueHistoryStore.getState().recordSnapshot();
+      usePnlCalendarStore.getState().recordToday();
+    }
+
+    // Record initial snapshot after prices load
     let attempts = 0;
-    const timer = setInterval(() => {
+    const initTimer = setInterval(() => {
       attempts++;
       const { stocks, prices } = useStockStore.getState();
       const hasPrices = stocks.length === 0 || Object.keys(prices).length > 0;
       if (hasPrices || attempts >= 30) {
-        clearInterval(timer);
+        clearInterval(initTimer);
         usePnlCalendarStore.getState().recordToday();
       }
     }, 2000);
-    return () => clearInterval(timer);
+
+    // Periodic refresh
+    const periodicTimer = setInterval(refreshAndRecord, INTERVAL);
+
+    return () => {
+      clearInterval(initTimer);
+      clearInterval(periodicTimer);
+    };
   }, []);
 
   useKeyboardShortcuts({
