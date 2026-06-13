@@ -19,7 +19,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
   const timestamps = useStockStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() =>
     filterTag ? stocks.filter(s => s.tags.includes(filterTag)) : stocks,
@@ -32,7 +32,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
   };
 
   const toggleExpand = (id: string) => {
-    setExpanded(prev => { const next = { ...prev }; if (next[id]) delete next[id]; else next[id] = true; return next; });
+    setExpandedId(prev => prev === id ? null : id);
   };
 
   const sortArrow = <span className={styles.sortArrow}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
@@ -108,7 +108,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                 <tr>
                   <td>
                     <button className={styles.detailToggle} onClick={() => toggleExpand(stock.id)}>
-                      {expanded[stock.id] ? '▼' : '▶'}
+                      {expandedId === stock.id ? '▼' : '▶'}
                     </button>
                     <span className={styles.stockName}>{stock.name}</span>
                     <span className={styles.stockCode}>{stock.code}</span>
@@ -148,7 +148,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                     <button className={styles.btnDel} onClick={() => onDelete(stock.id)}>删除</button>
                   </td>
                 </tr>
-                {expanded[stock.id] && (
+                {expandedId === stock.id && (
                   <tr className={styles.detailRow}>
                     <td colSpan={15 + maxBuyBatches * 2 + maxTpBatches}>
                       <div className={styles.detailPanel}>

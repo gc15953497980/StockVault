@@ -25,7 +25,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   const timestamps = useFundStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showDivCompare, setShowDivCompare] = useState<string | null>(null);
 
   const filtered = useMemo(() =>
@@ -39,12 +39,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   };
 
   const toggleExpand = (id: string) => {
-    setExpanded(prev => {
-      const next = { ...prev };
-      if (next[id]) delete next[id];
-      else next[id] = true;
-      return next;
-    });
+    setExpandedId(prev => prev === id ? null : id);
   };
 
   const sortArrow = <span className={styles.sortArrow}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
@@ -151,7 +146,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
                       <button className={styles.btnDel} onClick={() => onDelete(fund.id)}>删除</button>
                     </td>
                   </tr>
-                  {expanded[fund.id] && (
+                  {expandedId === fund.id && (
                     <tr className={styles.detailRow}>
                       <td colSpan={15}>
                         <div className={styles.detailPanel}>
