@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { calcStock, formatMoney, formatPercent, marketLabel } from '../utils/api';
 import { StockTxPanel, StockDividendPanel } from './TxPanel';
@@ -104,8 +104,8 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
             const timeStr = ts ? new Date(ts).toLocaleTimeString('zh-CN') : '-';
 
             return (
-              <>
-                <tr key={stock.id}>
+              <React.Fragment key={stock.id}>
+                <tr>
                   <td>
                     <button className={styles.detailToggle} onClick={() => toggleExpand(stock.id)}>
                       {expanded.has(stock.id) ? '▼' : '▶'}
@@ -174,7 +174,7 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             );
           })}
         </tbody>

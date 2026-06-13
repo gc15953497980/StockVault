@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { calcFund, formatMoney, formatPercent } from '../utils/api';
 import { FundTxPanel, FundDividendPanel } from './TxPanel';
@@ -116,8 +116,8 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
               const timeStr = ts ? new Date(ts).toLocaleTimeString('zh-CN') : '-';
 
               return (
-                <>
-                  <tr key={fund.id}>
+                <React.Fragment key={fund.id}>
+                  <tr>
                     <td className={styles.fundCell} onClick={() => toggleExpand(fund.id)}>
                       <span className={styles.fundName}>{hideNames ? '***' : (fund.name || fund.code)}</span>
                       <span className={styles.fundCode}>{hideNames ? '***' : fund.code}</span>
@@ -175,7 +175,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </tbody>
