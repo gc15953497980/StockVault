@@ -8,6 +8,7 @@ import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePnlCalendarStore } from './store/usePnlCalendarStore';
+import { useStockStore } from './store/useStockStore';
 import styles from './App.module.css';
 
 type Tab = 'dashboard' | 'holdings' | 'watchlist';
@@ -50,12 +51,19 @@ export default function App() {
 
   useAutoBackup();
 
-  // Auto-record daily PnL snapshot on mount (after prices load)
+  // Auto-record daily PnL snapshot once prices are loaded
   useEffect(() => {
-    const timer = setTimeout(() => {
-      usePnlCalendarStore.getState().recordToday();
-    }, 8000); // Wait for initial price fetch to complete
-    return () => clearTimeout(timer);
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      const { stocks, prices } = useStockStore.getState();
+      const hasPrices = stocks.length === 0 || Object.keys(prices).length > 0;
+      if (hasPrices || attempts >= 30) {
+        clearInterval(timer);
+        usePnlCalendarStore.getState().recordToday();
+      }
+    }, 2000);
+    return () => clearInterval(timer);
   }, []);
 
   useKeyboardShortcuts({
