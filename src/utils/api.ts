@@ -97,7 +97,9 @@ export function calcStock(
   targetPrice: number,
   targetMarketValue: number
 ): StockCalculations {
-  const currentMarketValue = currentPrice * shares;
+  const costTotal = holdingCost * shares;
+  const hasPrice = currentPrice > 0;
+  const currentMarketValue = hasPrice ? currentPrice * shares : costTotal;
   const effectiveTargetPrice =
     targetPrice > 0
       ? targetPrice
@@ -111,13 +113,12 @@ export function calcStock(
         ? targetPrice * shares
         : 0;
   const dropToTargetPercent =
-    currentPrice > 0 && effectiveTargetPrice > 0 && currentPrice > effectiveTargetPrice
+    hasPrice && effectiveTargetPrice > 0 && currentPrice > effectiveTargetPrice
       ? ((currentPrice - effectiveTargetPrice) / currentPrice) * 100
       : 0;
-  const costTotal = holdingCost * shares;
-  const profitLoss = (currentPrice - holdingCost) * shares;
+  const profitLoss = hasPrice ? (currentPrice - holdingCost) * shares : 0;
   const profitLossPercent =
-    holdingCost > 0 ? ((currentPrice - holdingCost) / holdingCost) * 100 : 0;
+    hasPrice && holdingCost > 0 ? ((currentPrice - holdingCost) / holdingCost) * 100 : 0;
 
   return {
     currentMarketValue,
@@ -163,12 +164,13 @@ export function calcFund(
   holdingCost: number,
   holdingAmount: number
 ): FundCalculations {
-  const shares = holdingCost > 0 ? holdingAmount / holdingCost : 0;
-  const marketValue = currentNAV * shares;
   const costTotal = holdingAmount;
-  const profitLoss = marketValue - costTotal;
+  const hasNAV = currentNAV > 0 && holdingCost > 0;
+  const shares = hasNAV ? holdingAmount / holdingCost : 0;
+  const marketValue = hasNAV ? currentNAV * shares : costTotal;
+  const profitLoss = hasNAV ? marketValue - costTotal : 0;
   const profitLossPercent =
-    costTotal > 0 ? ((marketValue - costTotal) / costTotal) * 100 : 0;
+    hasNAV && costTotal > 0 ? ((marketValue - costTotal) / costTotal) * 100 : 0;
 
   return { shares, marketValue, costTotal, profitLoss, profitLossPercent };
 }
