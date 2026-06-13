@@ -39,7 +39,14 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   };
 
   const toggleExpand = (id: string) => {
-    setExpanded((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+    console.log('FundTable toggleExpand', id, 'expanded before:', [...expanded]);
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      console.log('FundTable setExpanded', [...next]);
+      return next;
+    });
   };
 
   const sortArrow = <span className={styles.sortArrow}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
