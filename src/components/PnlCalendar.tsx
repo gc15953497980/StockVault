@@ -60,9 +60,10 @@ export default function PnlCalendar() {
   const compactPnl = (pnl: number): string => {
     if (pnl === 0) return '';
     const abs = Math.abs(pnl);
-    if (abs >= 1e4) return (pnl / 1e4).toFixed(1) + '万';
-    if (abs >= 1e3) return (pnl / 1e3).toFixed(1) + 'k';
-    return pnl.toFixed(0);
+    const sign = pnl > 0 ? '+' : '-';
+    if (abs >= 1e4) return sign + (abs / 1e4).toFixed(1) + '万';
+    if (abs >= 1e3) return sign + (abs / 1e3).toFixed(1) + 'k';
+    return sign + abs.toFixed(0);
   };
 
   const prevMonth = () => {
