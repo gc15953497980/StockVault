@@ -53,12 +53,11 @@ export default function App() {
 
   useAutoBackup();
 
-  // Periodic auto-refresh + daily PnL snapshot (runs regardless of active tab)
+  // Periodic auto-refresh + daily PnL snapshot (runs even in background tab)
   useEffect(() => {
     const INTERVAL = 30 * 60 * 1000; // 30 minutes
 
     async function refreshAndRecord() {
-      if (document.hidden) return;
       try {
         await Promise.all([
           useStockStore.getState().refreshPrices(),
@@ -68,6 +67,28 @@ export default function App() {
       useValueHistoryStore.getState().recordSnapshot();
       usePnlCalendarStore.getState().recordToday();
     }
+
+    // Check if within market-close window (15:00-15:10 Beijing time)
+    function isMarketCloseWindow(): boolean {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      return hour === 15 && minute >= 0 && minute < 10;
+    }
+
+    let marketCloseRecorded = false;
+
+    // Market close watcher: check every minute
+    const closeTimer = setInterval(() => {
+      if (isMarketCloseWindow() && !marketCloseRecorded) {
+        marketCloseRecorded = true;
+        refreshAndRecord();
+      }
+      // Reset flag after window passes
+      if (!isMarketCloseWindow()) {
+        marketCloseRecorded = false;
+      }
+    }, 60_000);
 
     // Record initial snapshot after prices load
     let attempts = 0;
@@ -85,6 +106,7 @@ export default function App() {
     const periodicTimer = setInterval(refreshAndRecord, INTERVAL);
 
     return () => {
+      clearInterval(closeTimer);
       clearInterval(initTimer);
       clearInterval(periodicTimer);
     };
