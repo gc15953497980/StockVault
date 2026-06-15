@@ -1,0 +1,85 @@
+.container { padding: 0; }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 10px 14px;
+  background: var(--surface); border-radius: 10px; box-shadow: var(--shadow);
+}
+
+.btnRefresh {
+  border: 1px solid var(--primary); background: var(--primary);
+  color: #fff; padding: 6px 14px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; white-space: nowrap;
+}
+.btnRefresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.aiscControl {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 260px;
+}
+.aiscLabel { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.aiscSlider { flex: 1; accent-color: var(--primary); }
+.aiscInput {
+  width: 72px; padding: 3px 6px; border: 1px solid var(--border);
+  border-radius: 4px; font-size: 13px; text-align: center;
+  background: var(--surface); color: var(--text);
+}
+
+/* ── Cards ── */
+.cards {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.card {
+  flex: 1; min-width: 120px; background: var(--surface);
+  border-radius: 10px; padding: 14px 18px; box-shadow: var(--shadow);
+  text-align: center;
+}
+.cardLabel { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.cardValue { font-size: 20px; font-weight: 700; color: var(--text); }
+.cardSub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* ── Chart ── */
+.chartBox {
+  background: var(--surface); border-radius: 10px; padding: 16px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+}
+.chartBox h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-secondary); }
+
+/* ── Mining Stocks Table ── */
+.tableBox {
+  background: var(--surface); border-radius: 10px; padding: 16px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+  overflow-x: auto;
+}
+.tableBox h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-secondary); }
+
+.table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.table th {
+  text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border-heavy);
+  color: var(--text-muted); font-weight: 600; white-space: nowrap;
+}
+.table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.table tr:last-child td { border-bottom: none; }
+
+/* ── Empty / Error ── */
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.error {
+  text-align: center; padding: 20px; color: var(--down);
+}
+
+@media (max-width: 768px) {
+  .cards { gap: 8px; }
+  .card { min-width: 80px; padding: 10px 12px; }
+  .cardValue { font-size: 16px; }
+  .toolbar { gap: 10px; }
+}
