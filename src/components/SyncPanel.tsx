@@ -3,11 +3,10 @@ import { getSyncConfig, saveSyncConfig, clearSyncConfig, pushToGist, pullFromGis
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
 import { useTxStore } from '../store/useTxStore';
-import { useValueHistoryStore } from '../store/useValueHistoryStore';
 import { useWatchlistStore } from '../store/useWatchlistStore';
 import { useNotesStore } from '../store/useNotesStore';
-import { usePnlCalendarStore } from '../store/usePnlCalendarStore';
 import { useAccountStore } from '../store/useAccountStore';
+import { storage, idb } from '../utils/storage';
 import type { Stock, Fund, Account, WatchItem, StockTx, FundTx, StockDividend, FundDividend, Note } from '../types';
 import styles from './SyncPanel.module.css';
 
@@ -97,24 +96,12 @@ export default function SyncPanel({ onDataChanged }: Props) {
         stockDividends: d.stockDivs as Record<string, StockDividend[]> | undefined,
         fundDividends: d.fundDivs as Record<string, FundDividend[]> | undefined,
       });
-      // valueHistory is now Record<string, HistoryPoint[]> — reload current account
-      const activeId = useAccountStore.getState().activeAccountId;
-      const vhKey = activeId === 'default' ? 'stockvault_value_history' : `stockvault_value_history_${activeId}`;
-      const vhData = localStorage.getItem(vhKey);
-      if (vhData) {
-        try { useValueHistoryStore.getState().setHistory(JSON.parse(vhData)); } catch { /* ignore */ }
-      }
+      // valueHistory & pnlCalendar already written by mergeNamespacedData → store subscription picks up changes
       if (Array.isArray(d.watchlist)) {
         useWatchlistStore.getState().setItems(d.watchlist as WatchItem[]);
       }
       if (d.notes && typeof d.notes === 'object') {
         useNotesStore.getState().setNotes(d.notes as Record<string, Note[]>);
-      }
-      // pnlCalendar is now Record<string, DailyPnl[]> — reload current account
-      const pnlKey = activeId === 'default' ? 'stockvault_pnl_calendar' : `stockvault_pnl_calendar_${activeId}`;
-      const pnlData = localStorage.getItem(pnlKey);
-      if (pnlData) {
-        try { usePnlCalendarStore.getState().setRecords(JSON.parse(pnlData)); } catch { /* ignore */ }
       }
       if (Array.isArray(d.accounts)) {
         useAccountStore.getState().setAccounts(d.accounts as Account[]);
@@ -132,9 +119,10 @@ export default function SyncPanel({ onDataChanged }: Props) {
     showStatus('info', '已断开同步');
   };
 
-  // Full backup: export all localStorage data as JSON
-  const handleFullBackup = () => {
+  // Full backup: export localStorage + IndexedDB as JSON
+  const handleFullBackup = async () => {
     const allData: Record<string, unknown> = {};
+    // Collect localStorage
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('stockvault_')) {
@@ -145,6 +133,17 @@ export default function SyncPanel({ onDataChanged }: Props) {
         }
       }
     }
+    // Collect IndexedDB
+    try {
+      const keys = await idb.keys();
+      for (const key of keys) {
+        if (key.startsWith('stockvault_')) {
+          const val = await idb.get(key);
+          if (val !== null) allData[`__idb__${key}`] = val;
+        }
+      }
+    } catch { /* IndexedDB unavailable, skip */ }
+
     const json = JSON.stringify(allData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -156,7 +155,7 @@ export default function SyncPanel({ onDataChanged }: Props) {
     showStatus('success', '全量备份已下载');
   };
 
-  // Full restore: import JSON and merge into localStorage
+  // Full restore: import JSON and merge into localStorage + IndexedDB
   const handleFullRestore = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -165,14 +164,19 @@ export default function SyncPanel({ onDataChanged }: Props) {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) { input.remove(); return; }
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         try {
           const data = JSON.parse(ev.target?.result as string);
           if (typeof data !== 'object' || data === null) throw new Error('invalid');
           let count = 0;
           for (const [key, value] of Object.entries(data)) {
-            if (key.startsWith('stockvault_')) {
-              localStorage.setItem(key, JSON.stringify(value));
+            if (key.startsWith('__idb__')) {
+              // IndexedDB key (prefixed with __idb__ during backup)
+              await idb.set(key.slice(7), value);
+              count++;
+            } else if (key.startsWith('stockvault_')) {
+              // Also write to IndexedDB for dual-write consistency
+              await storage.set(key, value);
               count++;
             }
           }
@@ -188,19 +192,15 @@ export default function SyncPanel({ onDataChanged }: Props) {
     input.click();
   };
 
-  // Clear all cache
+  // Clear all cache (localStorage + IndexedDB)
   const handleClearCache = () => {
     if (!window.confirm('确定要清除所有本地缓存数据吗？此操作不可恢复！建议先执行全量备份。')) return;
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('stockvault_')) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-    showStatus('info', '缓存已清除，请刷新页面');
-    onDataChanged();
+    storage.clearAll().then(() => {
+      showStatus('info', '缓存已清除，请刷新页面');
+      onDataChanged();
+    }).catch(() => {
+      showStatus('error', '清除失败');
+    });
   };
 
   const handleAutoToggle = (v: boolean) => {

@@ -88,7 +88,7 @@ npm run build
 
 # 3. 使用 deploy/stockvault.nginx.conf 配置 Nginx
 #    - 修改 server_name 为你的域名
-#    - 代理 /api/sina、/api/fundnav、/api/benchmark 到对应上游
+#    - 代理 /api/sina、/api/fundnav、/api/benchmark、/api/gold 到对应上游
 
 # Windows 本地可参考 deploy/deploy.ps1
 ```
@@ -123,6 +123,11 @@ server {
         proxy_pass https://push2his.eastmoney.com/;
         proxy_set_header Referer "https://eastmoney.com/";
     }
+
+    location /api/gold/ {
+        proxy_pass https://push2his.eastmoney.com/;
+        proxy_set_header Referer "https://eastmoney.com/";
+    }
 }
 ```
 
@@ -133,6 +138,7 @@ server {
 | `/api/sina/` | `https://hq.sinajs.cn/` | A股/港股/美股实时行情 |
 | `/api/fundnav/` | `https://api.fund.eastmoney.com/` | 基金净值、历史数据 |
 | `/api/benchmark/` | `https://push2his.eastmoney.com/` | 基准 K 线数据 |
+| `/api/gold/` | `https://push2his.eastmoney.com/` | 黄金历史 K 线 |
 
 ### CORS 注意事项
 

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import HoldingsView from './components/HoldingsView';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import WatchlistView from './components/WatchlistView';
-import GoldCostView from './components/GoldCostView';
+const GoldCostView = lazy(() => import('./components/GoldCostView'));
 import AccountSwitcher from './components/AccountSwitcher';
 import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
@@ -22,7 +22,7 @@ const TAB_INFO: { key: Tab; label: string; shortcut: string }[] = [
   { key: 'dashboard', label: '概览', shortcut: '1' },
   { key: 'holdings', label: '持仓', shortcut: '2' },
   { key: 'watchlist', label: '关注', shortcut: '3' },
-  { key: 'goldcost', label: '金矿', shortcut: '4' },
+  { key: 'goldcost', label: '金矿成本', shortcut: '4' },
 ];
 
 function getTheme(): 'light' | 'dark' {
@@ -216,10 +216,12 @@ export default function App() {
         ))}
       </nav>
 
-      {activeTab === 'dashboard' && <Dashboard />}
-      {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
-      {activeTab === 'watchlist' && <WatchlistView />}
-      {activeTab === 'goldcost' && <GoldCostView />}
+      <Suspense fallback={<div className={styles.loading}>加载中...</div>}>
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
+        {activeTab === 'watchlist' && <WatchlistView />}
+        {activeTab === 'goldcost' && <GoldCostView />}
+      </Suspense>
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
     </div>
   );

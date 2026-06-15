@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
 import SummaryCards from './SummaryCards';
@@ -15,8 +15,8 @@ import FormationChart from './FormationChart';
 import ProfitAttribution from './ProfitAttribution';
 import ConcentrationPanel from './ConcentrationPanel';
 import BenchmarkChart from './BenchmarkChart';
-import DcaCalculator from './DcaCalculator';
-import StrategySimulator from './StrategySimulator';
+const DcaCalculator = lazy(() => import('./DcaCalculator'));
+const StrategySimulator = lazy(() => import('./StrategySimulator'));
 import { stocksToCSV, fundsToCSV, downloadCSV } from '../utils/csv';
 import { requestNotificationPermission, checkStockAlerts, checkFundAlerts } from '../utils/notifications';
 import { useValueHistoryStore } from '../store/useValueHistoryStore';
@@ -306,8 +306,8 @@ export default function HoldingsView() {
         </>
       )}
 
-      {showDca && <DcaCalculator onClose={() => setShowDca(false)} />}
-      {showSim && <StrategySimulator onClose={() => setShowSim(false)} />}
+      {showDca && <Suspense fallback={null}><DcaCalculator onClose={() => setShowDca(false)} /></Suspense>}
+      {showSim && <Suspense fallback={null}><StrategySimulator onClose={() => setShowSim(false)} /></Suspense>}
     </>
   );
 }
