@@ -10,12 +10,13 @@ interface Props {
   onDelete: (id: string) => void;
   filterTag?: string;
   hideNames?: boolean;
+  loading?: boolean;
 }
 
 type SortField = 'code' | 'price' | 'cost' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'targetPrice' | 'dropToTarget' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function StockTable({ onEdit, onDelete, filterTag, hideNames }: Props) {
+export default function StockTable({ onEdit, onDelete, filterTag, hideNames, loading }: Props) {
   const stocks = useStockStore((s) => s.stocks);
   const prices = useStockStore((s) => s.prices);
   const timestamps = useStockStore((s) => s.timestamps);
@@ -70,7 +71,7 @@ export default function StockTable({ onEdit, onDelete, filterTag, hideNames }: P
     return arr;
   }, [filtered, prices, timestamps, sortField, sortDir]);
 
-  if (stocks.length === 0) {
+  if (stocks.length === 0 && !loading) {
     return <div className={styles.empty}>暂无持仓数据，点击上方"添加股票"开始</div>;
   }
 
@@ -100,6 +101,13 @@ export default function StockTable({ onEdit, onDelete, filterTag, hideNames }: P
           </tr>
         </thead>
         <tbody>
+          {loading && stocks.length === 0 && Array.from({ length: 5 }, (_, i) => (
+            <tr key={`skel-${i}`} className={styles.skeletonRow}>
+              <td colSpan={15 + maxBuyBatches * 2 + maxTpBatches}>
+                <div className={styles.skeletonLine} style={{ width: `${90 - i * 10}%` }} />
+              </td>
+            </tr>
+          ))}
           {sorted.map((stock) => {
             const cp = prices[stock.code] ?? 0;
             const calc = calcStock(cp, stock.holdingCost, stock.shares, stock.targetPrice, stock.targetMarketValue);

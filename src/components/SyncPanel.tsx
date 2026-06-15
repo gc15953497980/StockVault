@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getSyncConfig, saveSyncConfig, clearSyncConfig, pushToGist, pullFromGist, createGist } from '../utils/gistSync';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
@@ -32,6 +32,13 @@ export default function SyncPanel({ onDataChanged }: Props) {
     setGistId(cfg?.gistId ?? '');
     setOpen(true);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open]);
 
   const showStatus = (type: 'info' | 'success' | 'error', msg: string) => {
     setStatus({ type, msg });
@@ -123,6 +130,77 @@ export default function SyncPanel({ onDataChanged }: Props) {
     setAutoSync(false);
     localStorage.removeItem('stockvault_sync_auto');
     showStatus('info', '已断开同步');
+  };
+
+  // Full backup: export all localStorage data as JSON
+  const handleFullBackup = () => {
+    const allData: Record<string, unknown> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('stockvault_')) {
+        try {
+          allData[key] = JSON.parse(localStorage.getItem(key) ?? 'null');
+        } catch {
+          allData[key] = localStorage.getItem(key);
+        }
+      }
+    }
+    const json = JSON.stringify(allData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stockvault_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    showStatus('success', '全量备份已下载');
+  };
+
+  // Full restore: import JSON and merge into localStorage
+  const handleFullRestore = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) { input.remove(); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (typeof data !== 'object' || data === null) throw new Error('invalid');
+          let count = 0;
+          for (const [key, value] of Object.entries(data)) {
+            if (key.startsWith('stockvault_')) {
+              localStorage.setItem(key, JSON.stringify(value));
+              count++;
+            }
+          }
+          showStatus('success', `已恢复 ${count} 项数据，请刷新页面`);
+          onDataChanged();
+        } catch {
+          showStatus('error', '恢复失败：文件格式不正确');
+        }
+      };
+      reader.readAsText(file);
+      input.remove();
+    };
+    input.click();
+  };
+
+  // Clear all cache
+  const handleClearCache = () => {
+    if (!window.confirm('确定要清除所有本地缓存数据吗？此操作不可恢复！建议先执行全量备份。')) return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('stockvault_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    showStatus('info', '缓存已清除，请刷新页面');
+    onDataChanged();
   };
 
   const handleAutoToggle = (v: boolean) => {
@@ -220,6 +298,24 @@ export default function SyncPanel({ onDataChanged }: Props) {
                 每12小时自动备份下载
               </label>
             </div>
+
+            <hr className={styles.divider} />
+            <h3 className={styles.sectionTitle}>数据备份与恢复</h3>
+
+            <div className={styles.actions}>
+              <button className={styles.btnPrimary} onClick={handleFullBackup} disabled={loading}>
+                📦 全量备份
+              </button>
+              <button className={styles.btnPrimary} onClick={handleFullRestore} disabled={loading}>
+                📥 全量恢复
+              </button>
+              <button className={styles.btnDanger} onClick={handleClearCache} disabled={loading}>
+                🗑 清除缓存
+              </button>
+            </div>
+            <span className={styles.hint}>
+              全量备份导出所有本地数据（含多账户）；恢复后需刷新页面以加载数据
+            </span>
 
             {status && (
               <div className={`${styles.status} ${styles[`status${status.type === 'success' ? 'Success' : status.type === 'error' ? 'Error' : 'Info'}`]}`}>

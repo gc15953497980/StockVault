@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, Scatter, Line } from 'recharts';
 import { fetchFundHistoryNAV } from '../utils/api';
 import type { FundNavPoint } from '../types';
@@ -105,6 +105,12 @@ export default function StrategySimulator({ onClose }: Props) {
   const [results, setResults] = useState<StrategyResult[]>([]);
   const [history, setHistory] = useState<FundNavPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const handleSim = async () => {
     if (!code.trim()) return;

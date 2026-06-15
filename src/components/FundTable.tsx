@@ -12,12 +12,13 @@ interface Props {
   onDelete: (id: string) => void;
   hideNames?: boolean;
   filterTag?: string;
+  loading?: boolean;
 }
 
 type SortField = 'code' | 'sector' | 'nav' | 'accumulatedNAV' | 'holdingCost' | 'holdingAmount' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'dailyChange' | 'avgDownside' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Props) {
+export default function FundTable({ onEdit, onDelete, hideNames, filterTag, loading }: Props) {
   const funds = useFundStore((s) => s.funds);
   const navs = useFundStore((s) => s.navs);
   const accumulatedNAVs = useFundStore((s) => s.accumulatedNAVs);
@@ -81,7 +82,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
     return arr;
   }, [filtered, navs, accumulatedNAVs, dailyChangePercents, avgDownsides, timestamps, sortField, sortDir]);
 
-  if (funds.length === 0) {
+  if (funds.length === 0 && !loading) {
     return <div className={styles.empty}>暂无基金数据，点击上方"添加基金"开始</div>;
   }
 
@@ -109,6 +110,13 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
             </tr>
           </thead>
           <tbody>
+            {loading && funds.length === 0 && Array.from({ length: 5 }, (_, i) => (
+              <tr key={`skel-${i}`} className={styles.skeletonRow}>
+                <td colSpan={14}>
+                  <div className={styles.skeletonLine} style={{ width: `${90 - i * 10}%` }} />
+                </td>
+              </tr>
+            ))}
             {sorted.map((fund) => {
               const nav = navs[fund.code] ?? 0;
               const accNAV = accumulatedNAVs[fund.code] ?? 0;

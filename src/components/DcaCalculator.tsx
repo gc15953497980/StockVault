@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { fetchFundHistoryNAV, formatMoney } from '../utils/api';
 import { simulateDCA } from '../utils/dca';
@@ -21,6 +21,12 @@ export default function DcaCalculator({ onClose }: Props) {
   const [result, setResult] = useState<ReturnType<typeof simulateDCA> extends infer R ? R : never>(null);
   const [error, setError] = useState<string | null>(null);
   const [ranOnce, setRanOnce] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const handleCalc = async () => {
     if (!code.trim() || !amount) return;

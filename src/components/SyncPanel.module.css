@@ -183,3 +183,16 @@
   background: var(--primary-light);
   color: var(--primary);
 }
+
+.divider {
+  margin: 16px 0 12px;
+  border: none;
+  border-top: 1px solid var(--border-heavy);
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatMoney } from '../utils/api';
 import { calcAveragingDown, generateAvgDownCurve } from '../utils/dca';
@@ -15,6 +15,12 @@ interface Props {
 export default function AveragingDownCalc({ type, holdingCost, shares, currentPrice, onClose }: Props) {
   const [addAmount, setAddAmount] = useState('');
   const [addPrice, setAddPrice] = useState(currentPrice.toString());
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const result = useMemo(() => {
     const amt = parseFloat(addAmount);

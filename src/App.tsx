@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import HoldingsView from './components/HoldingsView';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
@@ -7,14 +7,23 @@ import GoldCostView from './components/GoldCostView';
 import AccountSwitcher from './components/AccountSwitcher';
 import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
+import { storage } from './utils/storage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePnlCalendarStore } from './store/usePnlCalendarStore';
 import { useValueHistoryStore } from './store/useValueHistoryStore';
 import { useStockStore } from './store/useStockStore';
 import { useFundStore } from './store/useFundStore';
+import { useAccountStore } from './store/useAccountStore';
 import styles from './App.module.css';
 
 type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost';
+
+const TAB_INFO: { key: Tab; label: string; shortcut: string }[] = [
+  { key: 'dashboard', label: '概览', shortcut: '1' },
+  { key: 'holdings', label: '持仓', shortcut: '2' },
+  { key: 'watchlist', label: '关注', shortcut: '3' },
+  { key: 'goldcost', label: '金矿', shortcut: '4' },
+];
 
 function getTheme(): 'light' | 'dark' {
   const stored = localStorage.getItem('stockvault_theme');
@@ -27,6 +36,11 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(getTheme);
   const [syncKey, setSyncKey] = useState(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const activeAccountId = useAccountStore(s => s.activeAccountId);
+  const accounts = useAccountStore(s => s.accounts);
+  const currentAccountName = activeAccountId === 'default' ? '总计' : accounts.find(a => a.id === activeAccountId)?.name ?? '总计';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -53,6 +67,11 @@ export default function App() {
   }, []);
 
   useAutoBackup();
+
+  // Migrate localStorage to IndexedDB on startup (one-time)
+  useEffect(() => {
+    storage.migrateFromLS().catch(() => {});
+  }, []);
 
   // Market-close snapshot + initial PnL recording
   // (Periodic price refresh is handled by useAutoRefresh in Toolbar)
@@ -122,46 +141,79 @@ export default function App() {
     '?': () => setShowShortcuts(v => !v),
   });
 
+  // Close more menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    if (showMoreMenu) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMoreMenu]);
+
+  // Esc to close shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowShortcuts(false);
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <h1>StockVault</h1>
-        <span className={styles.subtitle}>持仓管理</span>
+        <span className={styles.subtitle}>持仓管理{currentAccountName !== '总计' ? ` · ${currentAccountName}` : ''}</span>
         <AccountSwitcher />
         <SyncPanel onDataChanged={handleSyncDataChanged} />
-        <button className={styles.themeToggle} onClick={toggleTheme}>
-          {theme === 'light' ? '🌙 暗色' : '☀️ 亮色'}
-        </button>
-        <button className={styles.shortcutHelp} onClick={() => setShowShortcuts(true)} title="快捷键">
-          ?
-        </button>
+        <div className={styles.moreWrap} ref={moreRef}>
+          <button
+            className={styles.moreBtn}
+            onClick={() => setShowMoreMenu(v => !v)}
+            aria-label="更多操作"
+            aria-expanded={showMoreMenu}
+          >
+            ···
+          </button>
+          {showMoreMenu && (
+            <div className={styles.moreDropdown}>
+              <button
+                className={styles.moreItem}
+                onClick={() => { toggleTheme(); setShowMoreMenu(false); }}
+                aria-label={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
+              >
+                {theme === 'light' ? '🌙 暗色模式' : '☀️ 亮色模式'}
+              </button>
+              <button
+                className={styles.moreItem}
+                onClick={() => { setShowShortcuts(true); setShowMoreMenu(false); }}
+              >
+                ⌨ 快捷键 (?)
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
-      <nav className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === 'dashboard' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          概览
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'holdings' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('holdings')}
-        >
-          持仓
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'watchlist' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('watchlist')}
-        >
-          关注
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'goldcost' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('goldcost')}
-        >
-          金矿
-        </button>
+      <nav className={styles.tabs} role="tablist" aria-label="主导航">
+        {TAB_INFO.map(t => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={activeTab === t.key}
+            className={`${styles.tab} ${activeTab === t.key ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab(t.key)}
+            title={`${t.label} (快捷键 ${t.shortcut})`}
+          >
+            {t.label}
+            <span className={styles.shortcutHint}>{t.shortcut}</span>
+          </button>
+        ))}
       </nav>
 
       {activeTab === 'dashboard' && <Dashboard />}

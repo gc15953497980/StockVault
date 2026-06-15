@@ -40,6 +40,7 @@ export default function HoldingsView() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [stockFilterTag, setStockFilterTag] = useState('');
   const [fundFilterTag, setFundFilterTag] = useState('');
+  const [chartsExpanded, setChartsExpanded] = useState(true);
 
   useEffect(() => { requestNotificationPermission(); }, []);
 
@@ -216,7 +217,7 @@ export default function HoldingsView() {
         onFilterTagChange={setStockFilterTag}
       />
 
-      <StockTable onEdit={handleSEdit} onDelete={handleSDelete} hideNames={privacyMode} filterTag={stockFilterTag || undefined} />
+      <StockTable onEdit={handleSEdit} onDelete={handleSDelete} hideNames={privacyMode} filterTag={stockFilterTag || undefined} loading={sLoading} />
 
       {sShowForm && (
         <StockForm key={sEditingId ?? 'new-stock'} stock={sEditing} onSave={handleSSave} onClose={handleSClose} />
@@ -242,43 +243,66 @@ export default function HoldingsView() {
         onFilterTagChange={setFundFilterTag}
       />
 
-      <FundTable onEdit={handleFEdit} onDelete={handleFDelete} hideNames={privacyMode} filterTag={fundFilterTag || undefined} />
+      <FundTable onEdit={handleFEdit} onDelete={handleFDelete} hideNames={privacyMode} filterTag={fundFilterTag || undefined} loading={fLoading} />
 
       {fShowForm && (
         <FundForm key={fEditingId ?? 'new-fund'} fund={fEditing} onSave={handleFSave} onClose={handleFClose} />
       )}
 
-      {/* ====== 图表和分析 ====== */}
+      {/* ====== 图表和分析（可折叠）====== */}
       {hasAny && (
         <>
           <div style={{ borderTop: hasFunds ? '2px solid var(--border-heavy)' : 'none', margin: hasFunds ? '24px 0 16px' : '16px 0' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
-            <PortfolioChart
-              stocks={[
-                ...stocks.map(s => {
-                  const cp = prices[s.code] ?? 0;
-                  return { name: s.name, value: cp * s.shares || s.holdingCost * s.shares };
-                }),
-                ...funds.map(f => {
-                  const nav = navs[f.code] ?? 0;
-                  const mv = nav > 0 && f.holdingCost > 0 ? (f.holdingAmount / f.holdingCost) * nav : f.holdingAmount;
-                  return { name: f.name || f.code, value: mv };
-                }),
-              ].filter(d => d.value > 0).sort((a, b) => b.value - a.value)}
-            />
-            <ValueTrendChart type={hasStocks ? 'stocks' : 'funds'} />
-            <SectorChart />
-            <FormationChart />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setChartsExpanded(v => !v)}
+              style={{
+                border: '1px solid var(--border-heavy)',
+                background: 'var(--surface)',
+                color: 'var(--text-secondary)',
+                padding: '4px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+              }}
+            >
+              {chartsExpanded ? '▼ 收起图表' : '▶ 展开图表'}
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {chartsExpanded ? '资产配置 · 市值趋势 · 行业分布 · 阵容图 · 归因 · 集中度 · 基准对比' : '点击展开查看分析图表'}
+            </span>
           </div>
+          {chartsExpanded && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
+                <PortfolioChart
+                  stocks={[
+                    ...stocks.map(s => {
+                      const cp = prices[s.code] ?? 0;
+                      return { name: s.name, value: cp * s.shares || s.holdingCost * s.shares };
+                    }),
+                    ...funds.map(f => {
+                      const nav = navs[f.code] ?? 0;
+                      const mv = nav > 0 && f.holdingCost > 0 ? (f.holdingAmount / f.holdingCost) * nav : f.holdingAmount;
+                      return { name: f.name || f.code, value: mv };
+                    }),
+                  ].filter(d => d.value > 0).sort((a, b) => b.value - a.value)}
+                />
+                <ValueTrendChart type={hasStocks ? 'stocks' : 'funds'} />
+                <SectorChart />
+                <FormationChart />
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <ProfitAttribution type={hasStocks && hasFunds ? 'all' : hasStocks ? 'stocks' : 'funds'} />
-            <ConcentrationPanel />
-          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <ProfitAttribution type={hasStocks && hasFunds ? 'all' : hasStocks ? 'stocks' : 'funds'} />
+                <ConcentrationPanel />
+              </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <BenchmarkChart />
-          </div>
+              <div style={{ marginBottom: 20 }}>
+                <BenchmarkChart />
+              </div>
+            </>
+          )}
         </>
       )}
 

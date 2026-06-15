@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTxStore } from '../store/useTxStore';
 import { useFundStore } from '../store/useFundStore';
@@ -11,6 +11,12 @@ export default function DividendCompare({ fundId, onClose }: Props) {
   const dividends = useTxStore(s => s.fundDividends[fundId] || []);
   const fund = useFundStore(s => s.funds.find(f => f.id === fundId));
   const nav = useFundStore(s => s.navs[fund?.code ?? '']);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const { cashTotal, reinvestTotal, chartData } = useMemo(() => {
     let cashTotal = 0;

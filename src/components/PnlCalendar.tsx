@@ -98,8 +98,8 @@ export default function PnlCalendar() {
           )}
         </div>
         <div className={styles.legend}>
-          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(28,160,81,0.6)' }} /> 盈利</span>
-          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(232,57,41,0.6)' }} /> 亏损</span>
+          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(232,57,41,0.6)' }} /> 盈利（红）</span>
+          <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(28,160,81,0.6)' }} /> 亏损（绿）</span>
           <span className={styles.legendItem}>颜色越深幅度越大</span>
         </div>
       </div>
@@ -139,8 +139,8 @@ export default function PnlCalendar() {
         )}
       </div>
       <div className={styles.legend}>
-        <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(28,160,81,0.6)' }} /> 盈利</span>
-        <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(232,57,41,0.6)' }} /> 亏损</span>
+        <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(232,57,41,0.6)' }} /> 盈利（红）</span>
+        <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'rgba(28,160,81,0.6)' }} /> 亏损（绿）</span>
         <span className={styles.legendItem}>颜色越深幅度越大</span>
       </div>
     </div>
