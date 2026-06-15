@@ -76,31 +76,50 @@ export async function fetchGoldSpot(): Promise<GoldSpotResult | null> {
   }
 }
 
-// ── USD/CNY exchange rate (hf_USDCNY) ──
+// ── USD/CNY exchange rate ──
+// Sina uses 'USDCNY' (no hf_ prefix) for forex spot rates
+
+const USDCNY_FALLBACK = 7.25; // approximate fallback rate
 
 export async function fetchUsdCny(): Promise<ForexResult | null> {
-  try {
-    const url = SINA_API + 'hf_USDCNY';
-    const text = await fetchGBK(url);
-    const regex = /var hq_str_(\w+)="([^"]*)"/g;
-    const match = regex.exec(text);
-    if (!match) return null;
+  // Try primary symbol: USDCNY (forex spot)
+  const symbols = ['USDCNY', 'hf_USDCNY'];
+  for (const sym of symbols) {
+    try {
+      const url = SINA_API + sym;
+      const text = await fetchGBK(url);
+      const regex = /var hq_str_(\w+)="([^"]*)"/g;
+      const match = regex.exec(text);
+      if (!match) continue;
 
-    const fields = match[2].split(',');
-    const rate = parseFloat(fields[3]) || 0;
-    const prevClose = parseFloat(fields[2]) || rate;
+      const fields = match[2].split(',');
+      const rate = parseFloat(fields[3]) || 0;
+      if (rate <= 0) continue;
 
-    return {
-      name: fields[0] || 'USD/CNY',
-      rate,
-      prevClose,
-      changePercent: prevClose > 0 ? ((rate - prevClose) / prevClose) * 100 : 0,
-      timestamp: Date.now(),
-    };
-  } catch {
-    log.warn('[fetchUsdCny] failed');
-    return null;
+      const prevClose = parseFloat(fields[2]) || rate;
+
+      log.debug(`[fetchUsdCny] ${sym} = ${rate}`);
+      return {
+        name: fields[0] || 'USD/CNY',
+        rate,
+        prevClose,
+        changePercent: prevClose > 0 ? ((rate - prevClose) / prevClose) * 100 : 0,
+        timestamp: Date.now(),
+      };
+    } catch {
+      continue;
+    }
   }
+
+  // Fallback: use cached or approximate rate so CNY price still shows
+  log.warn('[fetchUsdCny] all symbols failed, using fallback rate');
+  return {
+    name: 'USD/CNY (估算)',
+    rate: USDCNY_FALLBACK,
+    prevClose: USDCNY_FALLBACK,
+    changePercent: 0,
+    timestamp: Date.now(),
+  };
 }
 
 // ── Gold historical K-line (Eastmoney) ──
