@@ -1,7 +1,7 @@
 import { useMemo, useId } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { useStockStore } from '../store/useStockStore';
-import { FORMATION_OPTIONS } from '../types';
+
 
 interface CategoryDef {
   name: string;

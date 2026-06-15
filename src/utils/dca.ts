@@ -57,7 +57,7 @@ export function simulateDCA(
 
   // Determine investment dates
   const investDates: Date[] = [];
-  let current = new Date(start);
+  const current = new Date(start);
   while (current <= end) {
     investDates.push(new Date(current));
     switch (frequency) {

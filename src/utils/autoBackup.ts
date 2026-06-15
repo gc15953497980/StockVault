@@ -49,6 +49,10 @@ function doBackup() {
 
 export function useAutoBackup() {
   useEffect(() => {
+    const autoBackupEnabled = localStorage.getItem('stockvault_backup_auto') !== '0';
+
+    if (!autoBackupEnabled) return;
+
     const lastBackup = localStorage.getItem('stockvault_last_backup');
     const now = Date.now();
 

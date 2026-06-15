@@ -14,6 +14,11 @@ interface Props {
   onRefresh: () => Promise<void>;
   showDca?: () => void;
   showSim?: () => void;
+  privacyMode?: boolean;
+  onTogglePrivacy?: () => void;
+  filterTag?: string;
+  availableTags?: string[];
+  onFilterTagChange?: (tag: string) => void;
 }
 
 export default function Toolbar({
@@ -28,6 +33,11 @@ export default function Toolbar({
   onRefresh,
   showDca,
   showSim,
+  privacyMode,
+  onTogglePrivacy,
+  filterTag,
+  availableTags,
+  onFilterTagChange,
 }: Props) {
   const { autoRefresh, toggleAutoRefresh, intervalMinutes, setIntervalMinutes, nextRefresh } = useAutoRefresh({ onRefresh });
 
@@ -56,6 +66,19 @@ export default function Toolbar({
         >
           {loading ? '刷新中...' : '刷新行情'}
         </button>
+        {availableTags && availableTags.length > 0 && onFilterTagChange && (
+          <select
+            value={filterTag ?? ''}
+            onChange={e => onFilterTagChange(e.target.value)}
+            className={styles.intervalSelect}
+            title="按标签筛选"
+          >
+            <option value="">全部标签</option>
+            {availableTags.map(tag => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
+        )}
       </div>
       <div className={styles.center}>
         <div className={styles.autoRefresh}>
@@ -87,6 +110,15 @@ export default function Toolbar({
         </div>
       </div>
       <div className={styles.right}>
+        {onTogglePrivacy && (
+          <button
+            className={styles.btnDefault}
+            onClick={onTogglePrivacy}
+            title={privacyMode ? '退出隐私模式' : '隐私模式'}
+          >
+            {privacyMode ? '👁 显示' : '🙈 隐藏'}
+          </button>
+        )}
         <ReportGenerator />
         {showDca && (
           <button className={styles.btnDefault} onClick={showDca} title="定投回测计算器">

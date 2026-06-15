@@ -17,52 +17,102 @@ export default function WatchlistView() {
   const [market, setMarket] = useState<Market>('a');
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [changePercents, setChangePercents] = useState<Record<string, number>>({});
+  const [wlLoading, setWlLoading] = useState(false);
 
-  useEffect(() => {
-    const refreshWatchPrices = async () => {
-      if (items.length === 0) return;
+  const handleRefreshWatch = async () => {
+    if (items.length === 0) return;
+    setWlLoading(true);
+    try {
       const aStocks = items.filter(i => i.type === 'stock' && i.market === 'a');
       const foreignStocks = items.filter(i => i.type === 'stock' && i.market !== 'a');
       const funds = items.filter(i => i.type === 'fund');
 
+      const newPrices: Record<string, number> = {};
+      const newCP: Record<string, number> = {};
+
       if (aStocks.length > 0) {
         const result = await fetchStockPrices(aStocks.map(s => s.code));
-        const p: Record<string, number> = {};
         for (const s of aStocks) {
-          if (result[s.code]) p[s.code] = result[s.code].price;
+          if (result[s.code]) {
+            newPrices[s.code] = result[s.code].price;
+            newCP[s.code] = result[s.code].changePercent;
+          }
         }
-        setPrices(prev => ({ ...prev, ...p }));
       }
 
       if (foreignStocks.length > 0) {
         const result = await fetchForeignPrices(foreignStocks.map(s => ({ code: s.code, market: s.market })));
-        const p: Record<string, number> = {};
-        const cp: Record<string, number> = {};
         for (const s of foreignStocks) {
           if (result[s.code]) {
-            p[s.code] = result[s.code].price;
-            cp[s.code] = result[s.code].changePercent;
+            newPrices[s.code] = result[s.code].price;
+            newCP[s.code] = result[s.code].changePercent;
           }
         }
-        setPrices(prev => ({ ...prev, ...p }));
-        setChangePercents(prev => ({ ...prev, ...cp }));
       }
 
       if (funds.length > 0) {
         const result = await fetchFundPrices(funds.map(f => f.code));
-        const p: Record<string, number> = {};
-        const cp: Record<string, number> = {};
         for (const f of funds) {
           if (result[f.code]) {
-            p[f.code] = result[f.code].currentNAV;
-            cp[f.code] = result[f.code].dailyChangePercent;
+            newPrices[f.code] = result[f.code].currentNAV;
+            newCP[f.code] = result[f.code].dailyChangePercent;
           }
         }
-        setPrices(prev => ({ ...prev, ...p }));
-        setChangePercents(prev => ({ ...prev, ...cp }));
+      }
+
+      setPrices(newPrices);
+      setChangePercents(newCP);
+    } finally {
+      setWlLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const refresh = async () => {
+      if (items.length === 0) return;
+      setWlLoading(true);
+      try {
+        const aStocks = items.filter(i => i.type === 'stock' && i.market === 'a');
+        const foreignStocks = items.filter(i => i.type === 'stock' && i.market !== 'a');
+        const funds = items.filter(i => i.type === 'fund');
+
+        const newPrices: Record<string, number> = {};
+        const newCP: Record<string, number> = {};
+
+        if (aStocks.length > 0) {
+          const result = await fetchStockPrices(aStocks.map(s => s.code));
+          for (const s of aStocks) {
+            if (result[s.code]) {
+              newPrices[s.code] = result[s.code].price;
+              newCP[s.code] = result[s.code].changePercent;
+            }
+          }
+        }
+        if (foreignStocks.length > 0) {
+          const result = await fetchForeignPrices(foreignStocks.map(s => ({ code: s.code, market: s.market })));
+          for (const s of foreignStocks) {
+            if (result[s.code]) {
+              newPrices[s.code] = result[s.code].price;
+              newCP[s.code] = result[s.code].changePercent;
+            }
+          }
+        }
+        if (funds.length > 0) {
+          const result = await fetchFundPrices(funds.map(f => f.code));
+          for (const f of funds) {
+            if (result[f.code]) {
+              newPrices[f.code] = result[f.code].currentNAV;
+              newCP[f.code] = result[f.code].dailyChangePercent;
+            }
+          }
+        }
+        setPrices(newPrices);
+        setChangePercents(newCP);
+      } finally {
+        setWlLoading(false);
       }
     };
-    refreshWatchPrices();
+    refresh();
   }, [items]);
 
   const handleAdd = () => {
@@ -119,6 +169,7 @@ export default function WatchlistView() {
       takeProfitPrices: [],
       takeProfitShares: [],
       tags: [],
+      formation: '',
       market: item.market,
       type: 'stock',
     });
@@ -134,6 +185,7 @@ export default function WatchlistView() {
       holdingAmount: 0,
       holdingCost: 0,
       tags: [],
+      formation: '',
     });
   };
 
@@ -141,6 +193,9 @@ export default function WatchlistView() {
     <div>
       <div className={styles.toolbar}>
         <button className={styles.btn} onClick={handleAdd}>+ 添加关注</button>
+        <button className={styles.btn} onClick={handleRefreshWatch} disabled={wlLoading}>
+          {wlLoading ? '刷新中...' : '刷新行情'}
+        </button>
         <span className={styles.count}>{items.length} 个关注标的</span>
       </div>
 
@@ -151,7 +206,7 @@ export default function WatchlistView() {
             <div className={styles.formRow}>
               <div className={styles.field}>
                 <label>类型</label>
-                <select value={itemType} onChange={e => setItemType(e.target.value as any)}>
+                <select value={itemType} onChange={e => setItemType(e.target.value as 'stock' | 'fund')}>
                   <option value="stock">股票</option>
                   <option value="fund">基金</option>
                 </select>

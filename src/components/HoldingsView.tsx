@@ -37,6 +37,9 @@ export default function HoldingsView() {
   // Shared state
   const [showDca, setShowDca] = useState(false);
   const [showSim, setShowSim] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [stockFilterTag, setStockFilterTag] = useState('');
+  const [fundFilterTag, setFundFilterTag] = useState('');
 
   useEffect(() => { requestNotificationPermission(); }, []);
 
@@ -89,6 +92,7 @@ export default function HoldingsView() {
             takeProfitPrices: Array.isArray(raw.takeProfitPrices) ? raw.takeProfitPrices.filter((v): v is number => typeof v === 'number') : [],
             takeProfitShares: Array.isArray(raw.takeProfitShares) ? raw.takeProfitShares.filter((v): v is number => typeof v === 'number') : [],
             tags: Array.isArray(raw.tags) ? raw.tags.filter((v): v is string => typeof v === 'string') : [],
+            formation: typeof raw.formation === 'string' ? raw.formation : '',
             market: raw.market === 'hk' || raw.market === 'us' || raw.market === 'a' ? raw.market : 'a',
             type: raw.type === 'etf' ? 'etf' : 'stock',
           };
@@ -205,9 +209,14 @@ export default function HoldingsView() {
         onRefresh={handleSRefresh}
         showDca={() => setShowDca(true)}
         showSim={() => setShowSim(true)}
+        privacyMode={privacyMode}
+        onTogglePrivacy={() => setPrivacyMode(p => !p)}
+        filterTag={stockFilterTag || undefined}
+        availableTags={[...new Set(stocks.map(s => s.tags).flat())].sort()}
+        onFilterTagChange={setStockFilterTag}
       />
 
-      <StockTable onEdit={handleSEdit} onDelete={handleSDelete} />
+      <StockTable onEdit={handleSEdit} onDelete={handleSDelete} hideNames={privacyMode} filterTag={stockFilterTag || undefined} />
 
       {sShowForm && (
         <StockForm key={sEditingId ?? 'new-stock'} stock={sEditing} onSave={handleSSave} onClose={handleSClose} />
@@ -226,9 +235,14 @@ export default function HoldingsView() {
         error={fError}
         count={funds.length}
         onRefresh={handleFRefresh}
+        privacyMode={privacyMode}
+        onTogglePrivacy={() => setPrivacyMode(p => !p)}
+        filterTag={fundFilterTag || undefined}
+        availableTags={[...new Set(funds.map(f => f.tags).flat())].sort()}
+        onFilterTagChange={setFundFilterTag}
       />
 
-      <FundTable onEdit={handleFEdit} onDelete={handleFDelete} hideNames={false} />
+      <FundTable onEdit={handleFEdit} onDelete={handleFDelete} hideNames={privacyMode} filterTag={fundFilterTag || undefined} />
 
       {fShowForm && (
         <FundForm key={fEditingId ?? 'new-fund'} fund={fEditing} onSave={handleFSave} onClose={handleFClose} />

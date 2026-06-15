@@ -52,8 +52,45 @@ export const useAccountStore = create<AccountStore>((set, get) => ({
   },
 
   deleteAccount: (id) => {
+    // Remove account from list
     const accounts = get().accounts.filter(a => a.id !== id);
     save(accounts);
+
+    // Clean up orphaned data for this account
+    // Stocks
+    const stocksKey = id === 'default' ? 'stockvault_stocks' : `stockvault_stocks_${id}`;
+    localStorage.removeItem(stocksKey);
+    const allStocksKey = 'stockvault_stocks';
+    try {
+      const allStocks = JSON.parse(localStorage.getItem(allStocksKey) || '[]') as { accountId?: string }[];
+      localStorage.setItem(allStocksKey, JSON.stringify(allStocks.filter(s => s.accountId !== id)));
+    } catch { /* ignore */ }
+
+    // Funds
+    const fundsKey = id === 'default' ? 'stockvault_funds' : `stockvault_funds_${id}`;
+    localStorage.removeItem(fundsKey);
+    const allFundsKey = 'stockvault_funds';
+    try {
+      const allFunds = JSON.parse(localStorage.getItem(allFundsKey) || '[]') as { accountId?: string }[];
+      localStorage.setItem(allFundsKey, JSON.stringify(allFunds.filter(f => f.accountId !== id)));
+    } catch { /* ignore */ }
+
+    // Transactions
+    const txPrefixes = ['stockvault_stock_txs', 'stockvault_fund_txs', 'stockvault_stock_divs', 'stockvault_fund_divs'];
+    for (const prefix of txPrefixes) {
+      if (id === 'default') {
+        localStorage.removeItem(prefix);
+      } else {
+        localStorage.removeItem(`${prefix}_${id}`);
+      }
+    }
+
+    // Value history & PnL calendar
+    const vhKey = id === 'default' ? 'stockvault_value_history' : `stockvault_value_history_${id}`;
+    localStorage.removeItem(vhKey);
+    const pnlKey = id === 'default' ? 'stockvault_pnl_calendar' : `stockvault_pnl_calendar_${id}`;
+    localStorage.removeItem(pnlKey);
+
     const activeId = get().activeAccountId;
     if (activeId === id) {
       const newActive = accounts.length > 0 ? accounts[0].id : 'default';

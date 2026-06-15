@@ -114,7 +114,8 @@ export default function Dashboard() {
                   <LineChart data={totalTrend}>
                     <XAxis dataKey="time" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
                     <YAxis tickFormatter={v => formatMoney(v as number)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={65} />
-                    <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '总资产']} />
+                    <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
+formatter={(v: any) => [formatMoney(Number(v ?? 0)), '总资产']} />
                     <Line type="monotone" dataKey="value" name="总资产" stroke="#1a73e8" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -146,7 +147,8 @@ export default function Dashboard() {
                     }} labelLine={false}>
                       {allocationData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                     </Pie>
-                    <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
+                    <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
+formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -188,7 +190,7 @@ export default function Dashboard() {
       {!hasData && (
         <div className={styles.emptyPage}>
           <p>还没有持仓数据</p>
-          <p>点击上方"股票"或"基金"标签开始管理您的投资组合</p>
+          <p>点击上方「持仓」或「关注」标签开始管理您的投资组合</p>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getSyncConfig, saveSyncConfig, clearSyncConfig, pushToGist, pullFromGist, createGist } from '../utils/gistSync';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
@@ -8,6 +8,7 @@ import { useWatchlistStore } from '../store/useWatchlistStore';
 import { useNotesStore } from '../store/useNotesStore';
 import { usePnlCalendarStore } from '../store/usePnlCalendarStore';
 import { useAccountStore } from '../store/useAccountStore';
+import type { Stock, Fund, Account, WatchItem, StockTx, FundTx, StockDividend, FundDividend, Note } from '../types';
 import styles from './SyncPanel.module.css';
 
 interface Props {
@@ -15,20 +16,22 @@ interface Props {
 }
 
 export default function SyncPanel({ onDataChanged }: Props) {
-  const config = getSyncConfig();
   const [open, setOpen] = useState(false);
-  const [token, setToken] = useState(config?.token ?? '');
-  const [gistId, setGistId] = useState(config?.gistId ?? '');
   const [autoSync, setAutoSync] = useState(localStorage.getItem('stockvault_sync_auto') === '1');
+  const [autoBackup, setAutoBackup] = useState(localStorage.getItem('stockvault_backup_auto') !== '0');
   const [status, setStatus] = useState<{ type: 'info' | 'success' | 'error'; msg: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (config) {
-      setToken(config.token);
-      setGistId(config.gistId);
-    }
-  }, [open]);
+  const config = getSyncConfig();
+  const [token, setToken] = useState(config?.token ?? '');
+  const [gistId, setGistId] = useState(config?.gistId ?? '');
+
+  const handleOpen = () => {
+    const cfg = getSyncConfig();
+    setToken(cfg?.token ?? '');
+    setGistId(cfg?.gistId ?? '');
+    setOpen(true);
+  };
 
   const showStatus = (type: 'info' | 'success' | 'error', msg: string) => {
     setStatus({ type, msg });
@@ -76,16 +79,16 @@ export default function SyncPanel({ onDataChanged }: Props) {
     if (result.success && result.data) {
       const d = result.data;
       if (Array.isArray(d.stocks)) {
-        useStockStore.getState().setStocks(d.stocks as any);
+        useStockStore.getState().setStocks(d.stocks as Stock[]);
       }
       if (Array.isArray(d.funds)) {
-        useFundStore.getState().setFunds(d.funds as any);
+        useFundStore.getState().setFunds(d.funds as Fund[]);
       }
       useTxStore.getState().setAllData({
-        stockTxs: d.stockTxs as any,
-        fundTxs: d.fundTxs as any,
-        stockDividends: d.stockDivs as any,
-        fundDividends: d.fundDivs as any,
+        stockTxs: d.stockTxs as Record<string, StockTx[]> | undefined,
+        fundTxs: d.fundTxs as Record<string, FundTx[]> | undefined,
+        stockDividends: d.stockDivs as Record<string, StockDividend[]> | undefined,
+        fundDividends: d.fundDivs as Record<string, FundDividend[]> | undefined,
       });
       // valueHistory is now Record<string, HistoryPoint[]> — reload current account
       const activeId = useAccountStore.getState().activeAccountId;
@@ -95,10 +98,10 @@ export default function SyncPanel({ onDataChanged }: Props) {
         try { useValueHistoryStore.getState().setHistory(JSON.parse(vhData)); } catch { /* ignore */ }
       }
       if (Array.isArray(d.watchlist)) {
-        useWatchlistStore.getState().setItems(d.watchlist as any);
+        useWatchlistStore.getState().setItems(d.watchlist as WatchItem[]);
       }
       if (d.notes && typeof d.notes === 'object') {
-        useNotesStore.getState().setNotes(d.notes as any);
+        useNotesStore.getState().setNotes(d.notes as Record<string, Note[]>);
       }
       // pnlCalendar is now Record<string, DailyPnl[]> — reload current account
       const pnlKey = activeId === 'default' ? 'stockvault_pnl_calendar' : `stockvault_pnl_calendar_${activeId}`;
@@ -107,7 +110,7 @@ export default function SyncPanel({ onDataChanged }: Props) {
         try { usePnlCalendarStore.getState().setRecords(JSON.parse(pnlData)); } catch { /* ignore */ }
       }
       if (Array.isArray(d.accounts)) {
-        useAccountStore.getState().setAccounts(d.accounts as any);
+        useAccountStore.getState().setAccounts(d.accounts as Account[]);
       }
       onDataChanged();
     }
@@ -131,7 +134,7 @@ export default function SyncPanel({ onDataChanged }: Props) {
 
   return (
     <>
-      <button className={styles.syncBtn} onClick={() => setOpen(true)} title="云同步">
+      <button className={styles.syncBtn} onClick={handleOpen} title="云同步">
         ↩ 同步
       </button>
 
@@ -201,6 +204,20 @@ export default function SyncPanel({ onDataChanged }: Props) {
                   onChange={(e) => handleAutoToggle(e.target.checked)}
                 />
                 修改数据后自动上传
+              </label>
+            </div>
+
+            <div className={styles.autoSync}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={autoBackup}
+                  onChange={(e) => {
+                    setAutoBackup(e.target.checked);
+                    localStorage.setItem('stockvault_backup_auto', e.target.checked ? '1' : '0');
+                  }}
+                />
+                每12小时自动备份下载
               </label>
             </div>
 

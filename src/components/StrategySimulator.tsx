@@ -45,7 +45,7 @@ function simulate(
 
   let position = 0;
   let buyNav = 0;
-  let returns: number[] = [];
+  const returns: number[] = [];
   let maxPeak = history[0].nav;
   let maxDrawdown = 0;
   let wins = 0;
@@ -260,6 +260,7 @@ export default function StrategySimulator({ onClose }: Props) {
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                 <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={60} domain={['auto', 'auto']} />
                 <Tooltip
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={(v: any, name: any) => {
                     if (name === 'nav') return [Number(v).toFixed(4), '净值'];
                     if (name === 'buy') return [Number(v).toFixed(4), '买入'];

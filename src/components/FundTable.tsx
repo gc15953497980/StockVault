@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { calcFund, formatMoney, formatPercent } from '../utils/api';
 import { FundTxPanel, FundDividendPanel } from './TxPanel';
+import AveragingDownCalc from './AveragingDownCalc';
 import NotesPanel from './NotesPanel';
 import DividendCompare from './DividendCompare';
 import styles from './FundTable.module.css';
@@ -26,6 +27,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [avgDownId, setAvgDownId] = useState<string | null>(null);
   const [showDivCompare, setShowDivCompare] = useState<string | null>(null);
 
   const filtered = useMemo(() =>
@@ -170,6 +172,20 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag }: Pr
                           </div>
                           <FundTxPanel fundId={fund.id} />
                           <FundDividendPanel fundId={fund.id} />
+                          <div className={styles.detailSection}>
+                            <button className={styles.btnDefault} onClick={() => setAvgDownId(avgDownId === fund.id ? null : fund.id)}>
+                              补仓计算器
+                            </button>
+                          </div>
+                          {avgDownId === fund.id && (
+                            <AveragingDownCalc
+                              type="fund"
+                              holdingCost={fund.holdingCost}
+                              shares={calc.shares}
+                              currentPrice={nav ?? 0}
+                              onClose={() => setAvgDownId(null)}
+                            />
+                          )}
                           <NotesPanel targetId={fund.id} label={fund.name || fund.code} />
                         </div>
                       </td>

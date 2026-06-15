@@ -83,7 +83,8 @@ export default function DividendCompare({ fundId, onClose }: Props) {
             <BarChart data={chartData}>
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
               <YAxis tickFormatter={v => formatMoney(v as number)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={60} />
-              <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
+              <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
+formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
               <Legend />
               <Bar dataKey="cash" name="现金分红" fill="#1a73e8" radius={[4, 4, 0, 0]} />
               <Bar dataKey="reinvest" name="红利再投" fill="#e83929" radius={[4, 4, 0, 0]} />

@@ -95,7 +95,7 @@ export default function DcaCalculator({ onClose }: Props) {
             </div>
             <div className={styles.field}>
               <label>频率</label>
-              <select value={frequency} onChange={e => setFrequency(e.target.value as any)}>
+              <select value={frequency} onChange={e => setFrequency(e.target.value as 'weekly' | 'biweekly' | 'monthly')}>
                 <option value="weekly">每周</option>
                 <option value="biweekly">双周</option>
                 <option value="monthly">每月</option>
@@ -156,7 +156,8 @@ export default function DcaCalculator({ onClose }: Props) {
               <LineChart data={chartData}>
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
                 <YAxis tickFormatter={v => formatMoney(v as number)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} width={60} />
-                <Tooltip formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
+                <Tooltip // eslint-disable-next-line @typescript-eslint/no-explicit-any
+formatter={(v: any) => [formatMoney(Number(v ?? 0)), '']} />
                 <Legend />
                 <Line type="monotone" dataKey="value" name="持仓市值" stroke="#e83929" dot={false} />
                 <Line type="monotone" dataKey="invested" name="累计投入" stroke="#1a73e8" dot={false} strokeDasharray="5 5" />

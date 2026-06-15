@@ -2,24 +2,27 @@ import React, { useState, useMemo } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { calcStock, formatMoney, formatPercent, marketLabel } from '../utils/api';
 import { StockTxPanel, StockDividendPanel } from './TxPanel';
+import AveragingDownCalc from './AveragingDownCalc';
 import styles from './StockTable.module.css';
 
 interface Props {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   filterTag?: string;
+  hideNames?: boolean;
 }
 
 type SortField = 'code' | 'price' | 'cost' | 'shares' | 'marketValue' | 'profitLoss' | 'profitLossPercent' | 'targetPrice' | 'dropToTarget' | 'time';
 type SortDir = 'asc' | 'desc';
 
-export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
+export default function StockTable({ onEdit, onDelete, filterTag, hideNames }: Props) {
   const stocks = useStockStore((s) => s.stocks);
   const prices = useStockStore((s) => s.prices);
   const timestamps = useStockStore((s) => s.timestamps);
   const [sortField, setSortField] = useState<SortField>('code');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [avgDownId, setAvgDownId] = useState<string | null>(null);
 
   const filtered = useMemo(() =>
     filterTag ? stocks.filter(s => s.tags.includes(filterTag)) : stocks,
@@ -110,8 +113,8 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                     <button className={styles.detailToggle} onClick={() => toggleExpand(stock.id)}>
                       {expandedId === stock.id ? '▼' : '▶'}
                     </button>
-                    <span className={styles.stockName}>{stock.name}</span>
-                    <span className={styles.stockCode}>{stock.code}</span>
+                    <span className={styles.stockName}>{hideNames ? '***' : stock.name}</span>
+                    <span className={styles.stockCode}>{hideNames ? '***' : stock.code}</span>
                   </td>
                   <td className={styles.market}>{marketLabel(stock.market)}</td>
                   <td><span className={stock.type === 'etf' ? styles.typeBadgeEtf : styles.typeBadge}>{stock.type === 'etf' ? 'ETF' : '个股'}</span></td>
@@ -170,6 +173,20 @@ export default function StockTable({ onEdit, onDelete, filterTag }: Props) {
                         </div>
                         <StockTxPanel stockId={stock.id} />
                         <StockDividendPanel stockId={stock.id} />
+                        <div className={styles.detailSection}>
+                          <button className={styles.btnDefault} onClick={() => setAvgDownId(avgDownId === stock.id ? null : stock.id)}>
+                            补仓计算器
+                          </button>
+                        </div>
+                        {avgDownId === stock.id && (
+                          <AveragingDownCalc
+                            type="stock"
+                            holdingCost={stock.holdingCost}
+                            shares={stock.shares}
+                            currentPrice={prices[stock.code] ?? 0}
+                            onClose={() => setAvgDownId(null)}
+                          />
+                        )}
                       </div>
                     </td>
                   </tr>

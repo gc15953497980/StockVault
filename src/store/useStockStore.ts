@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Stock, StockWithPrice } from '../types';
-import { fetchStockPrices } from '../utils/api';
+import { fetchStockPrices, fetchForeignPrices } from '../utils/api';
+import type { Market } from '../types';
 import { pushToGist } from '../utils/gistSync';
 import { useAccountStore } from './useAccountStore';
 
@@ -152,20 +153,42 @@ export const useStockStore = create<StockStore>((set, get) => {
 
       set({ loading: true, error: null });
       try {
-        const codes = stocks.map((s) => s.code);
-        const result = await fetchStockPrices(codes);
+        const aStocks = stocks.filter(s => s.market === 'a');
+        const foreignStocks = stocks.filter(s => s.market === 'hk' || s.market === 'us');
+
         const prices: Record<string, number> = {};
         const marketCaps: Record<string, number> = {};
         const dailyChangePercents: Record<string, number> = {};
         const timestamps: Record<string, number> = {};
-        for (const code of codes) {
-          if (result[code]) {
-            prices[code] = result[code].price;
-            marketCaps[code] = result[code].marketCap;
-            dailyChangePercents[code] = result[code].changePercent;
-            timestamps[code] = Date.now();
+
+        // A-share via fetchStockPrices
+        if (aStocks.length > 0) {
+          const aCodes = aStocks.map(s => s.code);
+          const aResult = await fetchStockPrices(aCodes);
+          for (const code of aCodes) {
+            if (aResult[code]) {
+              prices[code] = aResult[code].price;
+              marketCaps[code] = aResult[code].marketCap;
+              dailyChangePercents[code] = aResult[code].changePercent;
+              timestamps[code] = Date.now();
+            }
           }
         }
+
+        // HK/US via fetchForeignPrices
+        if (foreignStocks.length > 0) {
+          const foreignResult = await fetchForeignPrices(
+            foreignStocks.map(s => ({ code: s.code, market: s.market as Market }))
+          );
+          for (const s of foreignStocks) {
+            if (foreignResult[s.code]) {
+              prices[s.code] = foreignResult[s.code].price;
+              dailyChangePercents[s.code] = foreignResult[s.code].changePercent;
+              timestamps[s.code] = Date.now();
+            }
+          }
+        }
+
         set({ prices, marketCaps, dailyChangePercents, timestamps, loading: false });
       } catch (e) {
         set({ error: (e as Error).message, loading: false });

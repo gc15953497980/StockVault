@@ -53,10 +53,9 @@ export default function App() {
 
   useAutoBackup();
 
-  // Periodic auto-refresh + daily PnL snapshot (runs even in background tab)
+  // Market-close snapshot + initial PnL recording
+  // (Periodic price refresh is handled by useAutoRefresh in Toolbar)
   useEffect(() => {
-    const INTERVAL = 30 * 60 * 1000; // 30 minutes
-
     async function refreshAndRecord() {
       try {
         await Promise.all([
@@ -71,20 +70,26 @@ export default function App() {
     // Check if within market-close window (15:00-15:10 Beijing time)
     function isMarketCloseWindow(): boolean {
       const now = new Date();
-      const hour = now.getHours();
-      const minute = now.getMinutes();
+      const hour = parseInt(new Intl.DateTimeFormat('en', {
+        timeZone: 'Asia/Shanghai',
+        hour: '2-digit',
+        hour12: false,
+      }).format(now), 10);
+      const minute = parseInt(new Intl.DateTimeFormat('en', {
+        timeZone: 'Asia/Shanghai',
+        minute: '2-digit',
+      }).format(now), 10);
       return hour === 15 && minute >= 0 && minute < 10;
     }
 
     let marketCloseRecorded = false;
 
-    // Market close watcher: check every minute
+    // Market close watcher: check every minute for 15:00-15:10 Beijing time
     const closeTimer = setInterval(() => {
       if (isMarketCloseWindow() && !marketCloseRecorded) {
         marketCloseRecorded = true;
         refreshAndRecord();
       }
-      // Reset flag after window passes
       if (!isMarketCloseWindow()) {
         marketCloseRecorded = false;
       }
@@ -102,20 +107,16 @@ export default function App() {
       }
     }, 2000);
 
-    // Periodic refresh
-    const periodicTimer = setInterval(refreshAndRecord, INTERVAL);
-
     return () => {
       clearInterval(closeTimer);
       clearInterval(initTimer);
-      clearInterval(periodicTimer);
     };
   }, []);
 
   useKeyboardShortcuts({
-    '1': () => setActiveTab('holdings'),
-    '2': () => setActiveTab('watchlist'),
-    '3': () => setActiveTab('dashboard'),
+    '1': () => setActiveTab('dashboard'),
+    '2': () => setActiveTab('holdings'),
+    '3': () => setActiveTab('watchlist'),
     '?': () => setShowShortcuts(v => !v),
   });
 
