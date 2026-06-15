@@ -3,9 +3,11 @@ import { useTxStore } from '../store/useTxStore';
 import GridTradingPanel from './GridTradingPanel';
 import NotesPanel from './NotesPanel';
 
+const EMPTY_ARRAY: never[] = [];
+
 // --- Stock Transaction Panel ---
 export function StockTxPanel({ stockId }: { stockId: string }) {
-  const txs = useTxStore((s) => s.stockTxs[stockId] || []);
+  const txs = useTxStore((s) => s.stockTxs[stockId] ?? EMPTY_ARRAY);
   const addStockTx = useTxStore((s) => s.addStockTx);
   const deleteStockTx = useTxStore((s) => s.deleteStockTx);
   const [showForm, setShowForm] = useState(false);
@@ -68,7 +70,7 @@ export function StockTxPanel({ stockId }: { stockId: string }) {
 
 // --- Stock Dividend Panel ---
 export function StockDividendPanel({ stockId }: { stockId: string }) {
-  const divs = useTxStore((s) => s.stockDividends[stockId] || []);
+  const divs = useTxStore((s) => s.stockDividends[stockId] ?? EMPTY_ARRAY);
   const addStockDividend = useTxStore((s) => s.addStockDividend);
   const deleteStockDividend = useTxStore((s) => s.deleteStockDividend);
   const [showForm, setShowForm] = useState(false);
@@ -112,7 +114,7 @@ export function StockDividendPanel({ stockId }: { stockId: string }) {
 
 // --- Fund Transaction Panel ---
 export function FundTxPanel({ fundId }: { fundId: string }) {
-  const txs = useTxStore((s) => s.fundTxs[fundId] || []);
+  const txs = useTxStore((s) => s.fundTxs[fundId] ?? EMPTY_ARRAY);
   const addFundTx = useTxStore((s) => s.addFundTx);
   const deleteFundTx = useTxStore((s) => s.deleteFundTx);
   const [showForm, setShowForm] = useState(false);
@@ -166,7 +168,7 @@ export function FundTxPanel({ fundId }: { fundId: string }) {
 
 // --- Fund Dividend Panel ---
 export function FundDividendPanel({ fundId }: { fundId: string }) {
-  const divs = useTxStore((s) => s.fundDividends[fundId] || []);
+  const divs = useTxStore((s) => s.fundDividends[fundId] ?? EMPTY_ARRAY);
   const addFundDividend = useTxStore((s) => s.addFundDividend);
   const deleteFundDividend = useTxStore((s) => s.deleteFundDividend);
   const [showForm, setShowForm] = useState(false);

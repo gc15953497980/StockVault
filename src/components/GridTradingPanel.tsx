@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useTxStore } from '../store/useTxStore';
 import styles from './GridTradingPanel.module.css';
 
+const EMPTY_ARRAY: never[] = [];
+
 interface Props { stockId: string }
 
 export default function GridTradingPanel({ stockId }: Props) {
-  const txs = useTxStore(s => s.stockTxs[stockId] || []);
+  const txs = useTxStore(s => s.stockTxs[stockId] ?? EMPTY_ARRAY);
   const addStockTx = useTxStore(s => s.addStockTx);
   const deleteStockTx = useTxStore(s => s.deleteStockTx);
   const [showForm, setShowForm] = useState(false);

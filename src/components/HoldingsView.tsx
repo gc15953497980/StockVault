@@ -129,6 +129,10 @@ export default function HoldingsView() {
   const handleFEdit = useCallback((id: string) => { setFEditingId(id); setFShowForm(true); }, []);
   const handleFClose = useCallback(() => { setFShowForm(false); setFEditingId(null); }, []);
   const handleFDelete = useCallback((id: string) => { if (window.confirm('确定删除这只基金吗？')) deleteFund(id); }, [deleteFund]);
+  const handleFBatchSave = useCallback((newFunds: Fund[]) => {
+    for (const f of newFunds) addFund(f);
+    setFShowForm(false);
+  }, [addFund]);
 
   const handleFExportJSON = useCallback(() => {
     const data = JSON.stringify(funds, null, 2);
@@ -246,7 +250,7 @@ export default function HoldingsView() {
       <FundTable onEdit={handleFEdit} onDelete={handleFDelete} hideNames={privacyMode} filterTag={fundFilterTag || undefined} loading={fLoading} />
 
       {fShowForm && (
-        <FundForm key={fEditingId ?? 'new-fund'} fund={fEditing} onSave={handleFSave} onClose={handleFClose} />
+        <FundForm key={fEditingId ?? 'new-fund'} fund={fEditing} onSave={handleFSave} onClose={handleFClose} onBatchSave={handleFBatchSave} />
       )}
 
       {/* ====== 图表和分析（可折叠）====== */}

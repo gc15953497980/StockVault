@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { useNotesStore } from '../store/useNotesStore';
 import styles from './NotesPanel.module.css';
 
+const EMPTY_ARRAY: never[] = [];
+
 interface Props {
   targetId: string;
   label?: string;
 }
 
 export default function NotesPanel({ targetId }: Props) {
-  const notes = useNotesStore(s => s.notes[targetId] || []);
+  const notes = useNotesStore(s => s.notes[targetId] ?? EMPTY_ARRAY);
   const addNote = useNotesStore(s => s.addNote);
   const deleteNote = useNotesStore(s => s.deleteNote);
   const [showForm, setShowForm] = useState(false);

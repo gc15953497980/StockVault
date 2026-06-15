@@ -133,6 +133,294 @@
   background: var(--primary-hover);
 }
 
+/* --- Image upload & recognition --- */
+.dropZone {
+  border: 2px dashed var(--border-heavy);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dropZone:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.dropIcon {
+  font-size: 24px;
+}
+
+.dropText {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.dropHint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.imgPreviewArea {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.imgPreview {
+  max-width: 200px;
+  max-height: 160px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: contain;
+}
+
+.imgActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btnRecognize {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btnRecognize:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.btnRecognize:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btnClearImg {
+  border: 1px solid var(--border-heavy);
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btnClearImg:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.recogError {
+  font-size: 12px;
+  color: var(--down);
+  max-width: 280px;
+  word-break: break-all;
+}
+
+/* --- API Settings --- */
+.apiSettings {
+  margin-bottom: 12px;
+}
+
+.apiSettingsToggle {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.apiSettingsToggle:hover {
+  color: var(--text-secondary);
+}
+
+.apiSettingsBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.apiLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.apiInput {
+  padding: 5px 8px;
+  border: 1px solid var(--border-heavy);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+}
+
+.apiInput:focus {
+  border-color: var(--primary);
+}
+
+.apiSaveBtn {
+  border: 1px solid var(--primary);
+  background: none;
+  color: var(--primary);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  align-self: flex-start;
+}
+
+.apiSaveBtn:hover {
+  background: var(--primary-light);
+}
+
+/* --- Picker (multi-fund selection) --- */
+.pickerOverlay {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pickerTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.pickerWarning {
+  font-size: 11px;
+  color: var(--down);
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: var(--up-bg);
+  border-radius: 4px;
+}
+
+.pickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.pickerItem:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.pickerItemActive {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.pickerName {
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickerCode {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.pickerCodeMissing {
+  color: var(--down);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--up-bg);
+}
+
+.pickerAmount {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pickerSector {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--primary-light);
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.pickerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.btnBatchImport {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btnBatchImport:hover {
+  background: var(--primary-hover);
+}
+
+.pickerCancel {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.pickerCancel:hover {
+  color: var(--text-secondary);
+}
+
 @media (max-width: 768px) {
   .modal {
     width: calc(100vw - 32px);
