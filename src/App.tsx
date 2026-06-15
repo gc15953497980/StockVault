@@ -3,6 +3,7 @@ import HoldingsView from './components/HoldingsView';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import WatchlistView from './components/WatchlistView';
+import GoldCostView from './components/GoldCostView';
 import AccountSwitcher from './components/AccountSwitcher';
 import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
@@ -13,7 +14,7 @@ import { useStockStore } from './store/useStockStore';
 import { useFundStore } from './store/useFundStore';
 import styles from './App.module.css';
 
-type Tab = 'dashboard' | 'holdings' | 'watchlist';
+type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost';
 
 function getTheme(): 'light' | 'dark' {
   const stored = localStorage.getItem('stockvault_theme');
@@ -117,6 +118,7 @@ export default function App() {
     '1': () => setActiveTab('dashboard'),
     '2': () => setActiveTab('holdings'),
     '3': () => setActiveTab('watchlist'),
+    '4': () => setActiveTab('goldcost'),
     '?': () => setShowShortcuts(v => !v),
   });
 
@@ -154,11 +156,18 @@ export default function App() {
         >
           关注
         </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'goldcost' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('goldcost')}
+        >
+          金矿
+        </button>
       </nav>
 
       {activeTab === 'dashboard' && <Dashboard />}
       {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
       {activeTab === 'watchlist' && <WatchlistView />}
+      {activeTab === 'goldcost' && <GoldCostView />}
 
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
     </div>

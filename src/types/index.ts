@@ -169,3 +169,12 @@ export interface GridConfig {
   amountPerGrid: number;
   createdAt: string;
 }
+
+// Gold mining cost types
+export interface GoldKlinePoint {
+  date: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+}

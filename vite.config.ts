@@ -27,6 +27,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/benchmark/, ''),
       },
+      '/api/gold': {
+        target: 'https://push2his.eastmoney.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gold/, ''),
+      },
     },
   },
 })

@@ -6,6 +6,7 @@ const SHORTCUTS = [
   { key: '1', desc: '切换到概览' },
   { key: '2', desc: '切换到持仓' },
   { key: '3', desc: '切换到关注' },
+  { key: '4', desc: '切换到黄金开采成本' },
   { key: '?', desc: '显示/隐藏快捷键' },
 ];
 
