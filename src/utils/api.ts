@@ -226,17 +226,63 @@ function getCachedHistory(code: string): CacheEntry | null {
   }
 }
 
-function setCachedHistory(code: string, data: FundNavPoint[], startDate: string, endDate: string) {
+function setCachedHistory(code: string, data: FundNavPoint[], requestStart: string, requestEnd: string) {
+  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
   localStorage.setItem(
     FUND_HISTORY_CACHE_PREFIX + code,
-    JSON.stringify({ data, ts: Date.now(), startDate, endDate })
+    JSON.stringify({
+      data: sorted,
+      ts: Date.now(),
+      startDate: sorted[0]?.date ?? requestStart,
+      endDate: sorted[sorted.length - 1]?.date ?? requestEnd,
+    })
   );
+}
+
+const FUND_NAV_PAGE_SIZE = 20; // eastmoney API caps at 20 records per page
+
+function parseFundNavList(items: Record<string, string>[]): FundNavPoint[] {
+  return items
+    .filter((item) => item.DWJZ && parseFloat(item.DWJZ) > 0)
+    .map((item) => ({
+      date: item.FSRQ,
+      nav: parseFloat(item.DWJZ),
+      growthRate: item.JZZZL ? parseFloat(item.JZZZL) : 0,
+    }));
+}
+
+async function fetchFundHistoryPages(
+  code: string,
+  reqStartDate: string,
+  reqEndDate: string,
+  maxPages: number,
+): Promise<FundNavPoint[]> {
+  const all: FundNavPoint[] = [];
+
+  for (let pageIndex = 1; pageIndex <= maxPages; pageIndex++) {
+    const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=${pageIndex}&pageSize=${FUND_NAV_PAGE_SIZE}&startDate=${reqStartDate}&endDate=${reqEndDate}`;
+    log.debug(`[fetchFundHistoryNAV] requesting page ${pageIndex}: ${url}`);
+
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ErrCode !== 0 || !json.Data?.LSJZList?.length) break;
+
+    const page = parseFundNavList(json.Data.LSJZList);
+    if (page.length === 0) break;
+
+    all.push(...page);
+
+    const oldest = page.reduce((min, p) => (p.date < min ? p.date : min), page[0].date);
+    if (oldest <= reqStartDate || page.length < FUND_NAV_PAGE_SIZE) break;
+  }
+
+  return mergeNavData([], all);
 }
 
 export async function fetchFundHistoryNAV(
   code: string,
   monthsBack: number = 6,
-  pageSize: number = 200
+  maxRecords: number = 200
 ): Promise<FundNavPoint[]> {
   const now = new Date();
   const start = new Date(now);
@@ -250,25 +296,23 @@ export async function fetchFundHistoryNAV(
   const cached = getCachedHistory(code);
   if (cached) {
     log.debug(`[fetchFundHistoryNAV] cache hit, cached range ${cached.startDate} ~ ${cached.endDate}, ${cached.data.length} points`);
-    // Use cache if it fully covers the requested range
-    if (cached.startDate <= reqStartDate && cached.endDate >= reqEndDate) {
-      const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+    const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+    const minExpected = Math.min(30, Math.max(1, Math.floor(monthsBack * 15)));
+    if (cached.startDate <= reqStartDate && cached.endDate >= reqEndDate && filtered.length >= minExpected) {
       log.info(`[fetchFundHistoryNAV] cache covers request, returning ${filtered.length} points`);
       return filtered;
     }
     log.debug(`[fetchFundHistoryNAV] cache doesn't cover requested range, fetching fresh`);
   }
 
-  const url = `/api/fundnav/f10/lsjz?fundCode=${code}&pageIndex=1&pageSize=${pageSize}&startDate=${reqStartDate}&endDate=${reqEndDate}`;
-  log.debug(`[fetchFundHistoryNAV] requesting ${url}`);
+  const effectiveMaxRecords = Math.max(maxRecords, Math.ceil(monthsBack * 22));
+  const maxPages = Math.ceil(effectiveMaxRecords / FUND_NAV_PAGE_SIZE) + 1;
 
   try {
-    const res = await fetch(url);
-    const json = await res.json();
+    const result = await fetchFundHistoryPages(code, reqStartDate, reqEndDate, maxPages);
 
-    if (json.ErrCode !== 0 || !json.Data?.LSJZList) {
-      log.warn(`[fetchFundHistoryNAV] API error or empty data, ErrCode=${json.ErrCode}`);
-      // Return cached data as fallback even if it doesn't fully cover the range
+    if (result.length === 0) {
+      log.warn(`[fetchFundHistoryNAV] API returned no data for code=${code}`);
       if (cached) {
         const filtered = cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
         log.info(`[fetchFundHistoryNAV] fallback to cache, returning ${filtered.length} points`);
@@ -277,30 +321,17 @@ export async function fetchFundHistoryNAV(
       return [];
     }
 
-    const result: FundNavPoint[] = json.Data.LSJZList
-      .filter((item: Record<string, string>) => item.DWJZ && parseFloat(item.DWJZ) > 0)
-      .map((item: Record<string, string>) => ({
-        date: item.FSRQ,
-        nav: parseFloat(item.DWJZ),
-        growthRate: item.JZZZL ? parseFloat(item.JZZZL) : 0,
-      }))
-      .sort((a: FundNavPoint, b: FundNavPoint) => a.date.localeCompare(b.date));
+    log.info(`[fetchFundHistoryNAV] fetched ${result.length} points, range ${result[0]?.date} ~ ${result[result.length - 1]?.date}`);
 
-    log.info(`[fetchFundHistoryNAV] fetched ${result.length} points, range ${result[0]?.date} ~ ${result[result.length-1]?.date}`);
-
-    // Merge with cached data to extend coverage
     if (cached) {
       const merged = mergeNavData(cached.data, result);
       log.debug(`[fetchFundHistoryNAV] merged with cache, total ${merged.length} points`);
       setCachedHistory(code, merged, reqStartDate, reqEndDate);
-      const filtered = merged.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
-      return filtered;
+      return merged.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
     }
 
-    if (result.length > 0) {
-      setCachedHistory(code, result, reqStartDate, reqEndDate);
-    }
-    return result;
+    setCachedHistory(code, result, reqStartDate, reqEndDate);
+    return result.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
   } catch (err) {
     log.error(`[fetchFundHistoryNAV] fetch failed`, err);
     if (cached) {
@@ -383,5 +414,83 @@ export function marketLabel(market: Market): string {
     case 'hk': return '港股';
     case 'us': return '美股';
     default: return 'A股';
+  }
+}
+
+// ─── ETF / Stock NAV-like history (for position signal analysis) ───
+
+const ETF_HISTORY_CACHE_PREFIX = 'stockvault_etfnav_';
+
+interface CachedKline {
+  data: FundNavPoint[];
+  startDate: string;
+  endDate: string;
+  ts: number;
+}
+
+function getCachedKline(code: string): CachedKline | null {
+  try {
+    const raw = localStorage.getItem(ETF_HISTORY_CACHE_PREFIX + code);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function setCachedKline(code: string, data: FundNavPoint[], startDate: string, endDate: string) {
+  localStorage.setItem(ETF_HISTORY_CACHE_PREFIX + code, JSON.stringify({ data, startDate, endDate, ts: Date.now() }));
+}
+
+/**
+ * Fetch stock/ETF daily kline and convert to FundNavPoint-compatible format.
+ * Computes daily change % from consecutive close prices.
+ */
+export async function fetchETFNavHistory(
+  code: string,
+  monthsBack: number = 6,
+): Promise<FundNavPoint[]> {
+  const now = new Date();
+  const start = new Date(now);
+  start.setMonth(start.getMonth() - monthsBack);
+  const reqStartDate = start.toISOString().split('T')[0];
+  const reqEndDate = now.toISOString().split('T')[0];
+
+  const cached = getCachedKline(code);
+  if (cached) {
+    const cacheAge = Date.now() - cached.ts;
+    if (cacheAge < 3600_000 && cached.startDate <= reqStartDate && cached.endDate >= reqEndDate) {
+      return cached.data.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+    }
+  }
+
+  const secid = code.startsWith('6') || code.startsWith('5') ? `1.${code}` : `0.${code}`;
+  try {
+    const res = await fetch(`/api/benchmark/kline?secid=${secid}&lmt=300`);
+    const json = await res.json();
+    if (!json?.data?.klines) return [];
+
+    const prices: { date: string; close: number }[] = json.data.klines
+      .map((line: string) => {
+        const parts = line.split(',');
+        return { date: parts[0], close: parseFloat(parts[2]) };
+      })
+      .filter((p: { close: number }) => p.close > 0)
+      .sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+
+    const result: FundNavPoint[] = [];
+    for (let i = 0; i < prices.length; i++) {
+      const growthRate = i > 0 && prices[i-1].close > 0
+        ? ((prices[i].close - prices[i-1].close) / prices[i-1].close) * 100
+        : 0;
+      result.push({ date: prices[i].date, nav: prices[i].close, growthRate: Math.round(growthRate * 100) / 100 });
+    }
+
+    // Drop the first day (no prior close to compute change)
+    const usable = result.slice(1);
+    if (usable.length > 0) {
+      setCachedKline(code, usable, reqStartDate, reqEndDate);
+    }
+    return usable.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+  } catch {
+    return [];
   }
 }

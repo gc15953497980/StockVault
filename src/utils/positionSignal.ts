@@ -67,10 +67,6 @@ function addMonths(d: Date, months: number): Date {
   return r;
 }
 
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / 86400000);
-}
-
 // ─── Position Signal Analysis ───
 
 export function analyzePositionSignal(
