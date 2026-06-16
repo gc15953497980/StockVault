@@ -98,6 +98,23 @@ export default function GoldCostView() {
     }));
   }, [goldHistory, aisc]);
 
+  // Volatility-based valuation range (1-year lookback, 1σ band)
+  const valuationRange = useMemo(() => {
+    if (goldHistory.length < 30) return null;
+    const closes = goldHistory.map(p => p.close);
+    const returns: number[] = [];
+    for (let i = 1; i < closes.length; i++) {
+      returns.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+    }
+    const mean = returns.reduce((s, r) => s + r, 0) / returns.length;
+    const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / returns.length;
+    const dailyVol = Math.sqrt(variance);
+    const annualVol = dailyVol * Math.sqrt(252);
+    const upper = goldPrice * (1 + annualVol);
+    const lower = goldPrice * (1 - annualVol);
+    return { upper, lower, annualVol };
+  }, [goldHistory, goldPrice]);
+
   const handleRefresh = () => {
     refreshAll();
     fetchHistory();
@@ -183,6 +200,18 @@ export default function GoldCostView() {
             </div>
             <div className={styles.cardSub}>利润空间 ${spread.toFixed(1)}/oz</div>
           </div>
+
+          {valuationRange && (
+            <div className={styles.card}>
+              <div className={styles.cardLabel}>波动率估值区间 (1σ)</div>
+              <div className={styles.cardValue}>
+                ${valuationRange.lower.toFixed(0)} – ${valuationRange.upper.toFixed(0)}
+              </div>
+              <div className={styles.cardSub}>
+                年化波动率 {(valuationRange.annualVol * 100).toFixed(1)}%
+              </div>
+            </div>
+          )}
         </div>
       )}
 

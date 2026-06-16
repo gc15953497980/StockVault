@@ -6,6 +6,7 @@ import WatchlistView from './components/WatchlistView';
 import PositionSignal from './components/PositionSignal';
 const GoldCostView = lazy(() => import('./components/GoldCostView'));
 import AccountSwitcher from './components/AccountSwitcher';
+import ErrorBoundary from './components/ErrorBoundary';
 import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
 import { storage } from './utils/storage';
@@ -220,11 +221,13 @@ export default function App() {
       </nav>
 
       <Suspense fallback={<div className={styles.loading}>加载中...</div>}>
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
-        {activeTab === 'watchlist' && <WatchlistView />}
-        {activeTab === 'goldcost' && <GoldCostView />}
-        {activeTab === 'positionsignal' && <PositionSignal />}
+        <ErrorBoundary>
+          {activeTab === 'dashboard' && <Dashboard />}
+          {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
+          {activeTab === 'watchlist' && <WatchlistView />}
+          {activeTab === 'goldcost' && <GoldCostView />}
+          {activeTab === 'positionsignal' && <PositionSignal />}
+        </ErrorBoundary>
       </Suspense>
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
     </div>

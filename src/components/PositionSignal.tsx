@@ -6,7 +6,8 @@ import type { Stock } from '../types';
 import {
   analyzePositionSignal,
   backtestStrategies,
-  HOLD_LABELS,
+  getHoldLabel,
+  getZeroFeeDays,
   STRATEGY_LABELS,
   type PositionSignalResult,
   type BacktestResult,
@@ -108,7 +109,7 @@ export default function PositionSignal() {
     if (funds.length > 0 || aStocks.length > 0) runAnalysis();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRowClick = useCallback(async (kind: string, code: string) => {
+  const handleRowClick = useCallback(async (kind: string, code: string, redemptionFee?: string) => {
     const key = `${kind}:${code}`;
     if (expanded === key) {
       setExpanded(null);
@@ -118,14 +119,18 @@ export default function PositionSignal() {
 
     if (backtests.has(key)) return;
 
+    // Compute hold days: for funds use 0-fee threshold, for ETFs use defaults
+    const zeroDays = kind === '基金' ? getZeroFeeDays(redemptionFee) : 0;
+    const holdDays = zeroDays > 0 ? [zeroDays] : [5, 10, 20];
+
     try {
       const history = kind === '基金'
         ? await fetchFundHistoryNAV(code, 24)
         : await fetchETFNavHistory(code, 24);
-      const bt = backtestStrategies(history);
+      const bt = backtestStrategies(history, holdDays);
       setBacktests(prev => new Map(prev).set(key, bt));
     } catch {
-      setBacktests(prev => new Map(prev).set(key, { dataPoints: 0, drop: {}, std: {}, error: '回测失败' }));
+      setBacktests(prev => new Map(prev).set(key, { dataPoints: 0, holdDays: [], drop: {}, std: {}, error: '回测失败' }));
     }
   }, [expanded, backtests]);
 
@@ -228,7 +233,7 @@ export default function PositionSignal() {
                 const key = `${kind}:${code}`;
                 return (
                   <React.Fragment key={key}>
-                    <tr onClick={() => handleRowClick(kind, code)}>
+                    <tr onClick={() => handleRowClick(kind, code, r.redemptionFee)}>
                       <td style={{color: 'var(--text-muted)', fontSize: 12}}>{kind}</td>
                       <td>{r.name || name || code}</td>
                       <td className={r.latestPct >= 0 ? styles.signalAdd : styles.signalReduce}>
@@ -279,6 +284,8 @@ function BacktestPanel({ code, name, bt }: { code: string; name: string; bt?: Ba
     return <div className={styles.btBox} style={{color:'var(--text-muted)'}}>{bt.error}</div>;
   }
 
+  const days = bt.holdDays || [5, 10, 20];
+
   return (
     <div className={styles.btBox}>
       <h4>{name}（{code}）— 回测对比（近2年，滚动6月窗口）</h4>
@@ -295,10 +302,10 @@ function BacktestPanel({ code, name, bt }: { code: string; name: string; bt?: Ba
           </tr>
         </thead>
         <tbody>
-          {[5, 10, 20].map(hold => (
+          {days.map(hold => (
             <React.Fragment key={hold}>
               <tr>
-                <td>{HOLD_LABELS[hold]}</td>
+                <td>{getHoldLabel(hold)}</td>
                 <td className={styles.stratDrop}>{STRATEGY_LABELS.drop}</td>
                 <td>{bt.drop[hold]?.signals ?? 0}</td>
                 <td>{bt.drop[hold]?.winRate ?? 0}%</td>

@@ -8,7 +8,7 @@ const REDUCE_POSITION_MULT = 2.0;
 const DATA_YEARS = 2;
 const MULT_DROP = 2.0;
 const MULT_STD = 1.3;
-const HOLD_DAYS_LIST = [5, 10, 20] as const;
+const DEFAULT_HOLD_DAYS = [5, 10, 20];
 
 // ─── Analysis Result Types ───
 
@@ -53,6 +53,8 @@ export interface BacktestRow {
 export interface BacktestResult {
   /** 数据点数 */
   dataPoints: number;
+  /** 回测使用的持有天数 */
+  holdDays: number[];
   /** drop策略回测结果 key=持有天数 */
   drop: Record<number, BacktestRow>;
   /** std策略回测结果 key=持有天数 */
@@ -141,11 +143,15 @@ export function analyzePositionSignal(
 
 export function backtestStrategies(
   navPoints: FundNavPoint[],
+  holdDays?: number[],
 ): BacktestResult {
+  const days = holdDays && holdDays.length > 0 ? holdDays : DEFAULT_HOLD_DAYS;
+  const emptyRow = { signals: 0, winRate: 0, avgRet: 0, medRet: 0, worst: 0 };
   const empty: BacktestResult = {
     dataPoints: navPoints.length,
-    drop: Object.fromEntries(HOLD_DAYS_LIST.map(h => [h, { signals: 0, winRate: 0, avgRet: 0, medRet: 0, worst: 0 }])),
-    std: Object.fromEntries(HOLD_DAYS_LIST.map(h => [h, { signals: 0, winRate: 0, avgRet: 0, medRet: 0, worst: 0 }])),
+    holdDays: [...days],
+    drop: Object.fromEntries(days.map(h => [h, { ...emptyRow }])),
+    std: Object.fromEntries(days.map(h => [h, { ...emptyRow }])),
   };
 
   if (navPoints.length < 80) {
@@ -161,10 +167,10 @@ export function backtestStrategies(
   }
 
   // Accumulators for each strategy × hold day combination
-  const dropReturns: Record<number, number[]> = { 5: [], 10: [], 20: [] };
-  const dropWins: Record<number, number> = { 5: 0, 10: 0, 20: 0 };
-  const stdReturns: Record<number, number[]> = { 5: [], 10: [], 20: [] };
-  const stdWins: Record<number, number> = { 5: 0, 10: 0, 20: 0 };
+  const dropReturns: Record<number, number[]> = Object.fromEntries(days.map(d => [d, [] as number[]]));
+  const dropWins: Record<number, number> = Object.fromEntries(days.map(d => [d, 0]));
+  const stdReturns: Record<number, number[]> = Object.fromEntries(days.map(d => [d, [] as number[]]));
+  const stdWins: Record<number, number> = Object.fromEntries(days.map(d => [d, 0]));
 
   const earliestSignalDate = addMonths(new Date(filtered[0].date), LOOKBACK_MONTHS);
 
@@ -197,7 +203,7 @@ export function backtestStrategies(
 
     if (!signalDrop && !signalStd) continue;
 
-    for (const hold of HOLD_DAYS_LIST) {
+    for (const hold of days) {
       const futureEnd = i + hold;
       if (futureEnd >= filtered.length) continue;
 
@@ -224,7 +230,7 @@ export function backtestStrategies(
     std: {} as Record<number, BacktestRow>,
   };
 
-  for (const hold of HOLD_DAYS_LIST) {
+  for (const hold of days) {
     result.drop[hold] = buildBacktestRow(dropReturns[hold], dropWins[hold]);
     result.std[hold] = buildBacktestRow(stdReturns[hold], stdWins[hold]);
   }
@@ -248,8 +254,25 @@ function buildBacktestRow(returns: number[], wins: number): BacktestRow {
 
 // ─── Currency / Redemption Fee ───
 
-export const HOLD_LABELS: Record<number, string> = { 5: '5天', 10: '10天', 20: '20天' };
 export const STRATEGY_LABELS = { drop: '均值跌幅 ×2.0', std: '标准差 ×1.3' } as const;
+
+export function getHoldLabel(days: number): string {
+  if (days >= 365) return `${days / 365}年`;
+  if (days >= 30) return `${Math.round(days / 30)}月`;
+  return `${days}天`;
+}
+
+/** 从赎回费率字符串中提取0费率所需天数，如 "≥7天"→7, "≥2年"→730, "免费"→0 */
+export function getZeroFeeDays(feeStr?: string): number {
+  if (!feeStr || feeStr === '-' || feeStr === '免费') return 0;
+  const match = feeStr.match(/[≥>]\s*(\d+)\s*(天|年|月)/);
+  if (!match) return 0;
+  const num = parseInt(match[1], 10);
+  const unit = match[2];
+  if (unit === '年') return num * 365;
+  if (unit === '月') return num * 30;
+  return num;
+}
 
 function round2(v: number): number {
   return Math.round(v * 100) / 100;
