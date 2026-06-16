@@ -284,7 +284,7 @@ function BacktestPanel({ code, name, bt }: { code: string; name: string; bt?: Ba
     return <div className={styles.btBox} style={{color:'var(--text-muted)'}}>{bt.error}</div>;
   }
 
-  const days = bt.holdDays || [5, 10, 20];
+  const days = [...(bt.holdDays || [5, 10, 20])].sort((a, b) => a - b);
 
   return (
     <div className={styles.btBox}>

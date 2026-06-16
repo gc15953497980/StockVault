@@ -145,7 +145,7 @@ export function backtestStrategies(
   navPoints: FundNavPoint[],
   holdDays?: number[],
 ): BacktestResult {
-  const days = holdDays && holdDays.length > 0 ? holdDays : DEFAULT_HOLD_DAYS;
+  const days = (holdDays && holdDays.length > 0 ? [...holdDays] : DEFAULT_HOLD_DAYS).sort((a, b) => a - b);
   const emptyRow = { signals: 0, winRate: 0, avgRet: 0, medRet: 0, worst: 0 };
   const empty: BacktestResult = {
     dataPoints: navPoints.length,
