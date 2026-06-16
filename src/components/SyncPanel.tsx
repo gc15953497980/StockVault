@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSyncConfig, saveSyncConfig, clearSyncConfig, pushToGist, pullFromGist, createGist } from '../utils/gistSync';
+import { collectAllData } from '../utils/autoBackup';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
 import { useTxStore } from '../store/useTxStore';
@@ -9,6 +10,12 @@ import { useAccountStore } from '../store/useAccountStore';
 import { storage, idb } from '../utils/storage';
 import type { Stock, Fund, Account, WatchItem, StockTx, FundTx, StockDividend, FundDividend, Note } from '../types';
 import styles from './SyncPanel.module.css';
+
+function fmtBytes(bytes: number): string {
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
 
 interface Props {
   onDataChanged: () => void;
@@ -24,6 +31,34 @@ export default function SyncPanel({ onDataChanged }: Props) {
   const config = getSyncConfig();
   const [token, setToken] = useState(config?.token ?? '');
   const [gistId, setGistId] = useState(config?.gistId ?? '');
+  const [storageUsage, setStorageUsage] = useState<{ ls: number; idb: number; quota: number }>({ ls: 0, idb: 0, quota: 0 });
+
+  // Calculate storage usage
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      // localStorage size
+      let lsSize = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('stockvault_')) {
+          lsSize += (k.length + (localStorage.getItem(k)?.length ?? 0)) * 2; // UTF-16
+        }
+      }
+      // IndexedDB + total quota
+      let idbSize = 0;
+      let quota = 0;
+      try {
+        const est = await navigator.storage?.estimate();
+        if (est) {
+          quota = est.quota ?? 0;
+          idbSize = (est.usage ?? 0) - lsSize;
+          if (idbSize < 0) idbSize = 0;
+        }
+      } catch { /* ignore */ }
+      setStorageUsage({ ls: lsSize, idb: idbSize, quota });
+    })();
+  }, [open]);
 
   const handleOpen = () => {
     const cfg = getSyncConfig();
@@ -121,29 +156,7 @@ export default function SyncPanel({ onDataChanged }: Props) {
 
   // Full backup: export localStorage + IndexedDB as JSON
   const handleFullBackup = async () => {
-    const allData: Record<string, unknown> = {};
-    // Collect localStorage
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('stockvault_')) {
-        try {
-          allData[key] = JSON.parse(localStorage.getItem(key) ?? 'null');
-        } catch {
-          allData[key] = localStorage.getItem(key);
-        }
-      }
-    }
-    // Collect IndexedDB
-    try {
-      const keys = await idb.keys();
-      for (const key of keys) {
-        if (key.startsWith('stockvault_')) {
-          const val = await idb.get(key);
-          if (val !== null) allData[`__idb__${key}`] = val;
-        }
-      }
-    } catch { /* IndexedDB unavailable, skip */ }
-
+    const allData = await collectAllData();
     const json = JSON.stringify(allData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -316,6 +329,35 @@ export default function SyncPanel({ onDataChanged }: Props) {
             <span className={styles.hint}>
               全量备份导出所有本地数据（含多账户）；恢复后需刷新页面以加载数据
             </span>
+
+            {(storageUsage.ls > 0 || storageUsage.idb > 0) && (
+              <div className={styles.storageInfo}>
+                <div className={styles.storageRow}>
+                  <span>本地存储</span>
+                  <span>{fmtBytes(storageUsage.ls)}</span>
+                </div>
+                <div className={styles.storageRow}>
+                  <span>IndexedDB</span>
+                  <span>{fmtBytes(storageUsage.idb)}</span>
+                </div>
+                {storageUsage.quota > 0 && (
+                  <div className={styles.storageRow}>
+                    <span>浏览器配额</span>
+                    <span>{fmtBytes(storageUsage.quota)}</span>
+                  </div>
+                )}
+                <div className={styles.storageBar}>
+                  <div
+                    className={styles.storageBarFill}
+                    style={{
+                      width: storageUsage.quota > 0
+                        ? `${Math.min(100, ((storageUsage.ls + storageUsage.idb) / storageUsage.quota) * 100)}%`
+                        : '0%',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {status && (
               <div className={`${styles.status} ${styles[`status${status.type === 'success' ? 'Success' : status.type === 'error' ? 'Error' : 'Info'}`]}`}>

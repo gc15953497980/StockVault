@@ -11,10 +11,7 @@ import ShortcutHelp from './components/ShortcutHelp';
 import { useAutoBackup } from './utils/autoBackup';
 import { storage } from './utils/storage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { usePnlCalendarStore } from './store/usePnlCalendarStore';
-import { useValueHistoryStore } from './store/useValueHistoryStore';
-import { useStockStore } from './store/useStockStore';
-import { useFundStore } from './store/useFundStore';
+import { useMarketCloseSnapshot } from './hooks/useMarketCloseSnapshot';
 import { useAccountStore } from './store/useAccountStore';
 import styles from './App.module.css';
 
@@ -76,65 +73,7 @@ export default function App() {
     storage.migrateFromLS().catch(() => {});
   }, []);
 
-  // Market-close snapshot + initial PnL recording
-  // (Periodic price refresh is handled by useAutoRefresh in Toolbar)
-  useEffect(() => {
-    async function refreshAndRecord() {
-      try {
-        await Promise.all([
-          useStockStore.getState().refreshPrices(),
-          useFundStore.getState().refreshPrices(),
-        ]);
-      } catch { /* ignore */ }
-      useValueHistoryStore.getState().recordSnapshot();
-      usePnlCalendarStore.getState().recordToday();
-    }
-
-    // Check if within market-close window (15:00-15:10 Beijing time)
-    function isMarketCloseWindow(): boolean {
-      const now = new Date();
-      const hour = parseInt(new Intl.DateTimeFormat('en', {
-        timeZone: 'Asia/Shanghai',
-        hour: '2-digit',
-        hour12: false,
-      }).format(now), 10);
-      const minute = parseInt(new Intl.DateTimeFormat('en', {
-        timeZone: 'Asia/Shanghai',
-        minute: '2-digit',
-      }).format(now), 10);
-      return hour === 15 && minute >= 0 && minute < 10;
-    }
-
-    let marketCloseRecorded = false;
-
-    // Market close watcher: check every minute for 15:00-15:10 Beijing time
-    const closeTimer = setInterval(() => {
-      if (isMarketCloseWindow() && !marketCloseRecorded) {
-        marketCloseRecorded = true;
-        refreshAndRecord();
-      }
-      if (!isMarketCloseWindow()) {
-        marketCloseRecorded = false;
-      }
-    }, 60_000);
-
-    // Record initial snapshot after prices load
-    let attempts = 0;
-    const initTimer = setInterval(() => {
-      attempts++;
-      const { stocks, prices } = useStockStore.getState();
-      const hasPrices = stocks.length === 0 || Object.keys(prices).length > 0;
-      if (hasPrices || attempts >= 30) {
-        clearInterval(initTimer);
-        usePnlCalendarStore.getState().recordToday();
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(closeTimer);
-      clearInterval(initTimer);
-    };
-  }, []);
+  useMarketCloseSnapshot();
 
   useKeyboardShortcuts({
     '1': () => setActiveTab('dashboard'),

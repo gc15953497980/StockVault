@@ -1,43 +1,47 @@
 import { useEffect } from 'react';
+import { idb } from './storage';
 
 const BACKUP_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours
 
-const FLAT_KEYS = [
-  'stockvault_stocks', 'stockvault_funds',
-  'stockvault_stock_txs', 'stockvault_fund_txs',
-  'stockvault_stock_divs', 'stockvault_fund_divs',
-  'stockvault_watchlist', 'stockvault_notes',
-  'stockvault_accounts',
-];
+/** 收集所有 localStorage + IndexedDB 数据，供手动/自动备份共用 */
+export async function collectAllData(): Promise<Record<string, unknown>> {
+  const allData: Record<string, unknown> = {};
 
-const NAMESPACED_PREFIXES = [
-  'stockvault_value_history',
-  'stockvault_pnl_calendar',
-];
-
-function doBackup() {
-  try {
-    const obj: Record<string, unknown> = {};
-    for (const key of FLAT_KEYS) {
-      const raw = localStorage.getItem(key);
-      if (raw) obj[key] = JSON.parse(raw);
-    }
-    for (const prefix of NAMESPACED_PREFIXES) {
-      // Scan for all keys matching the prefix
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key === prefix || key.startsWith(prefix + '_'))) {
-          const raw = localStorage.getItem(key);
-          if (raw) obj[key] = JSON.parse(raw);
-        }
+  // localStorage
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('stockvault_')) {
+      try {
+        allData[key] = JSON.parse(localStorage.getItem(key) ?? 'null');
+      } catch {
+        allData[key] = localStorage.getItem(key);
       }
     }
+  }
+
+  // IndexedDB
+  try {
+    const keys = await idb.keys();
+    for (const key of keys) {
+      if (key.startsWith('stockvault_')) {
+        const val = await idb.get(key);
+        if (val !== null) allData[`__idb__${key}`] = val;
+      }
+    }
+  } catch { /* IndexedDB unavailable, skip */ }
+
+  return allData;
+}
+
+async function doBackup() {
+  try {
+    const obj = await collectAllData();
     if (Object.keys(obj).length === 0) return;
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `stockvault_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `stockvault_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -56,7 +60,6 @@ export function useAutoBackup() {
     const lastBackup = localStorage.getItem('stockvault_last_backup');
     const now = Date.now();
 
-    // Set initial timestamp so we don't backup immediately on first load
     if (!lastBackup) {
       localStorage.setItem('stockvault_last_backup', String(now));
     } else if (now - parseInt(lastBackup) >= BACKUP_INTERVAL) {
