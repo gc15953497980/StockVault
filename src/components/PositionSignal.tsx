@@ -138,7 +138,7 @@ export default function PositionSignal() {
   const sorted = [...items].sort((a, b) => {
     const va = getSortValue(a, sortBy);
     const vb = getSortValue(b, sortBy);
-    if (sortBy === 'kind' || sortBy === 'name') {
+    if (sortBy === 'kind' || sortBy === 'name' || sortBy === 'redemptionFee') {
       return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
     }
     return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
