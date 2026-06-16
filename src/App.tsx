@@ -3,6 +3,7 @@ import HoldingsView from './components/HoldingsView';
 import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import WatchlistView from './components/WatchlistView';
+import PositionSignal from './components/PositionSignal';
 const GoldCostView = lazy(() => import('./components/GoldCostView'));
 import AccountSwitcher from './components/AccountSwitcher';
 import ShortcutHelp from './components/ShortcutHelp';
@@ -16,13 +17,14 @@ import { useFundStore } from './store/useFundStore';
 import { useAccountStore } from './store/useAccountStore';
 import styles from './App.module.css';
 
-type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost';
+type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost' | 'positionsignal';
 
 const TAB_INFO: { key: Tab; label: string; shortcut: string }[] = [
   { key: 'dashboard', label: '概览', shortcut: '1' },
   { key: 'holdings', label: '持仓', shortcut: '2' },
   { key: 'watchlist', label: '关注', shortcut: '3' },
   { key: 'goldcost', label: '金矿成本', shortcut: '4' },
+  { key: 'positionsignal', label: '仓位信号', shortcut: '5' },
 ];
 
 function getTheme(): 'light' | 'dark' {
@@ -138,6 +140,7 @@ export default function App() {
     '2': () => setActiveTab('holdings'),
     '3': () => setActiveTab('watchlist'),
     '4': () => setActiveTab('goldcost'),
+    '5': () => setActiveTab('positionsignal'),
     '?': () => setShowShortcuts(v => !v),
   });
 
@@ -221,6 +224,7 @@ export default function App() {
         {activeTab === 'holdings' && <HoldingsView key={`holdings-${syncKey}`} />}
         {activeTab === 'watchlist' && <WatchlistView />}
         {activeTab === 'goldcost' && <GoldCostView />}
+        {activeTab === 'positionsignal' && <PositionSignal />}
       </Suspense>
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
     </div>

@@ -1,0 +1,93 @@
+.container { padding: 0; }
+
+.toolbar {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 10px 14px;
+  background: var(--surface); border-radius: 10px; box-shadow: var(--shadow);
+}
+
+.btnRefresh {
+  border: 1px solid var(--primary); background: var(--primary);
+  color: #fff; padding: 6px 14px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; white-space: nowrap;
+}
+.btnRefresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Summary Cards ── */
+.cards {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.card {
+  flex: 1; min-width: 100px; background: var(--surface);
+  border-radius: 10px; padding: 12px 16px; box-shadow: var(--shadow);
+  text-align: center;
+}
+.cardLabel { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.cardValue { font-size: 18px; font-weight: 700; color: var(--text); }
+
+.signalAdd { color: var(--up); }
+.signalReduce { color: var(--down); }
+
+/* ── Table ── */
+.tableBox {
+  background: var(--surface); border-radius: 10px; padding: 16px;
+  box-shadow: var(--shadow); margin-bottom: 16px;
+  overflow-x: auto;
+}
+.tableBox h3 { margin: 0 0 12px; font-size: 14px; color: var(--text-secondary); }
+
+.table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.table th {
+  text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border-heavy);
+  color: var(--text-muted); font-weight: 600; white-space: nowrap;
+  cursor: pointer; user-select: none;
+}
+.table th:hover { color: var(--primary); }
+.table td {
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  color: var(--text); white-space: nowrap;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tbody tr { cursor: pointer; transition: background 0.1s; }
+.table tbody tr:hover { background: var(--surface-hover); }
+
+.expandedRow td { padding: 0; border-bottom: 2px solid var(--primary); }
+
+/* ── Backtest sub-table ── */
+.btBox { padding: 12px 20px 16px; }
+.btBox h4 { margin: 0 0 8px; font-size: 13px; color: var(--text-secondary); }
+.btTable {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  margin-bottom: 12px;
+}
+.btTable th {
+  text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border-heavy);
+  color: var(--text-muted); font-weight: 600;
+}
+.btTable td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--text); }
+.btTable tr:last-child td { border-bottom: none; }
+
+.stratDrop { color: var(--primary); }
+.stratStd { color: var(--up); }
+
+/* States */
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.error { text-align: center; padding: 20px; color: var(--down); }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+.progress { font-size: 12px; color: var(--text-muted); margin-left: 12px; }
+
+/* Sort indicator */
+.sortAsc::after { content: ' ↑'; font-size: 10px; }
+.sortDesc::after { content: ' ↓'; font-size: 10px; }
+
+@media (max-width: 768px) {
+  .table { font-size: 11px; }
+  .table th, .table td { padding: 5px 6px; }
+  .cards { gap: 6px; }
+  .card { min-width: 70px; padding: 8px 10px; }
+  .cardValue { font-size: 15px; }
+}
