@@ -32,6 +32,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/gold/, ''),
       },
+      '/api/fundf10': {
+        target: 'https://fundf10.eastmoney.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/fundf10/, ''),
+        headers: {
+          Referer: 'https://fundf10.eastmoney.com/',
+        },
+      },
       '/api/gemini': {
         target: 'https://generativelanguage.googleapis.com',
         changeOrigin: true,

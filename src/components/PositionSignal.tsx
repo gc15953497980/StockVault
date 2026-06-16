@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { useStockStore } from '../store/useStockStore';
-import { fetchFundHistoryNAV, fetchETFNavHistory } from '../utils/api';
+import { fetchFundHistoryNAV, fetchETFNavHistory, fetchFundRedemptionFee } from '../utils/api';
 import type { Stock } from '../types';
 import {
   analyzePositionSignal,
@@ -13,13 +13,14 @@ import {
 } from '../utils/positionSignal';
 import styles from './PositionSignal.module.css';
 
-type SortKey = 'kind' | 'name' | 'stdDev' | 'avgDrop' | 'avgRise' | 'latestPct' | 'addThreshold' | 'reduceThreshold';
+type SortKey = 'kind' | 'name' | 'stdDev' | 'avgDrop' | 'avgRise' | 'latestPct' | 'addThreshold' | 'reduceThreshold' | 'redemptionFee';
 
 interface AnalysisItem {
   kind: '基金' | 'ETF/股票';
   code: string;
   name: string;
   result: PositionSignalResult;
+  redemptionFee?: string;
 }
 
 export default function PositionSignal() {
@@ -85,7 +86,12 @@ export default function PositionSignal() {
           newItems.push({ ...e, result: { ...emptyResult, error: '无历史数据' } });
         } else {
           const result = analyzePositionSignal(history, e.name);
-          newItems.push({ ...e, result });
+          let redemptionFee: string | undefined;
+          if (e.kind === '基金') {
+            redemptionFee = await fetchFundRedemptionFee(e.code);
+            result.redemptionFee = redemptionFee;
+          }
+          newItems.push({ ...e, result, redemptionFee });
         }
       } catch {
         newItems.push({ ...e, result: { ...emptyResult, error: '数据获取失败' } });
@@ -213,6 +219,7 @@ export default function PositionSignal() {
                 <th className={sortIndicator('avgRise')} onClick={() => handleSort('avgRise')}>均涨幅</th>
                 <th className={sortIndicator('addThreshold')} onClick={() => handleSort('addThreshold')}>加仓线</th>
                 <th className={sortIndicator('reduceThreshold')} onClick={() => handleSort('reduceThreshold')}>减仓线</th>
+                <th className={sortIndicator('redemptionFee')} onClick={() => handleSort('redemptionFee')}>赎回费率</th>
                 <th>信号</th>
               </tr>
             </thead>
@@ -232,6 +239,7 @@ export default function PositionSignal() {
                       <td>{r.avgRise > 0 ? `${r.avgRise}%` : '-'}</td>
                       <td>{r.addThreshold < 0 ? `${r.addThreshold}%` : '-'}</td>
                       <td>{r.reduceThreshold > 0 ? `${r.reduceThreshold}%` : '-'}</td>
+                      <td style={{fontSize: 11}}>{r.redemptionFee || (kind === '基金' ? '获取中...' : '-')}</td>
                       <td>
                         {r.addSignal && <span className={styles.signalAdd}>★ 加仓</span>}
                         {r.reduceSignal && <span className={styles.signalReduce}>★ 减仓</span>}
@@ -240,7 +248,7 @@ export default function PositionSignal() {
                     </tr>
                     {expanded === key && (
                       <tr className={styles.expandedRow}>
-                        <td colSpan={9}>
+                        <td colSpan={10}>
                           <BacktestPanel code={code} name={r.name} bt={backtests.get(key)} />
                         </td>
                       </tr>
@@ -330,6 +338,7 @@ function getSortValue(item: AnalysisItem, key: SortKey): string | number {
   switch (key) {
     case 'kind': return item.kind;
     case 'name': return item.result.name || item.name;
+    case 'redemptionFee': return item.redemptionFee || '';
     default: return item.result[key] ?? 0;
   }
 }

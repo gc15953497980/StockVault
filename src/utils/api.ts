@@ -204,6 +204,150 @@ export function formatPercent(v: number): string {
   return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
 }
 
+// ─── Fund Redemption Fee (scrape from tiantian fund) ───
+
+const FEE_CACHE_PREFIX = 'stockvault_feerate_';
+
+export interface RedemptionFeeTier {
+  period: string;
+  rate: number;
+}
+
+/**
+ * 从天天基金网爬取基金赎回费率
+ * 返回 0 费率对应的持有期限，如 "≥7天"、"≥2年"
+ * 若所有期限都有费率，则显示最低费率档位，如 "≥1年 0.25%"
+ */
+export async function fetchFundRedemptionFee(code: string): Promise<string> {
+  const cacheKey = FEE_CACHE_PREFIX + code;
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (raw) {
+      const { data, ts } = JSON.parse(raw);
+      if (Date.now() - ts < CACHE_TTL) return data;
+    }
+  } catch { /* ignore cache errors */ }
+
+  try {
+    const res = await fetch(`/api/fundf10/jjfl_${code}.html`);
+    if (!res.ok) {
+      log.warn(`[fetchFundRedemptionFee] HTTP ${res.status} for code=${code}`);
+      return getCachedFeeOrPlaceholder(cacheKey);
+    }
+    const html = await res.text();
+
+    const tiers = parseRedemptionFeeHtml(html);
+    if (tiers.length === 0) {
+      log.warn(`[fetchFundRedemptionFee] no fee data parsed for code=${code}`);
+      return getCachedFeeOrPlaceholder(cacheKey);
+    }
+
+    // Show only the zero-fee threshold: find the first tier with 0% rate
+    const zeroTier = tiers.find(t => t.rate === 0);
+    let formatted: string;
+    if (zeroTier) {
+      formatted = zeroTier === tiers[0] ? '免费' : shortenPeriod(zeroTier.period);
+    } else {
+      // No zero-fee tier — show the lowest available rate
+      const best = tiers[tiers.length - 1];
+      formatted = `${shortenPeriod(best.period)} ${best.rate.toFixed(2)}%`;
+    }
+
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ data: formatted, ts: Date.now() }));
+    } catch { /* ignore */ }
+
+    return formatted;
+  } catch (err) {
+    log.error(`[fetchFundRedemptionFee] fetch failed for ${code}`, err);
+    return getCachedFeeOrPlaceholder(cacheKey);
+  }
+}
+
+function getCachedFeeOrPlaceholder(cacheKey: string): string {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (raw) return JSON.parse(raw).data;
+  } catch { /* ignore */ }
+  return '-';
+}
+
+/** 从费率页面 HTML 中解析赎回费率表 */
+function parseRedemptionFeeHtml(html: string): RedemptionFeeTier[] {
+  const tiers: RedemptionFeeTier[] = [];
+
+  // The redemption fee table is uniquely identified by <th class="last fl">赎回费率</th>
+  // Find this marker, then locate the enclosing <table> element
+  const marker = '<th class="last fl">赎回费率</th>';
+  const markerIdx = html.indexOf(marker);
+  if (markerIdx === -1) return tiers;
+
+  // Search backward for <table and forward for </table>
+  const beforeHtml = html.slice(0, markerIdx);
+  const tableStartIdx = beforeHtml.lastIndexOf('<table');
+  if (tableStartIdx === -1) return tiers;
+
+  const afterHtml = html.slice(markerIdx);
+  const tableEndIdx = afterHtml.indexOf('</table>');
+  if (tableEndIdx === -1) return tiers;
+
+  const tableHtml = html.slice(tableStartIdx, markerIdx + tableEndIdx + '</table>'.length);
+
+  // Find <tbody> and parse its <tr> rows
+  const tbodyMatch = tableHtml.match(/<tbody>([\s\S]*?)<\/tbody>/i);
+  if (!tbodyMatch) return tiers;
+
+  const tbodyHtml = tbodyMatch[1];
+  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rowMatch;
+
+  while ((rowMatch = rowRegex.exec(tbodyHtml)) !== null) {
+    const rowHtml = rowMatch[1];
+    // Extract text from <td> cells
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    const cells: string[] = [];
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+      const text = stripHtml(tdMatch[1]).trim();
+      if (text) cells.push(text);
+    }
+
+    if (cells.length >= 2) {
+      const rateMatch = cells[1].match(/^([\d.]+)%$/);
+      if (rateMatch) {
+        tiers.push({ period: cells[0], rate: parseFloat(rateMatch[1]) });
+      }
+    }
+  }
+
+  return tiers;
+}
+
+/** Strip HTML tags and decode common entities */
+function stripHtml(str: string): string {
+  return str
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Shorten holding period descriptions for compact display */
+function shortenPeriod(period: string): string {
+  // Common patterns: "小于7天" → "<7天", "大于等于7天，小于1年" → "7天-1年"
+  return period
+    .replace(/小于/g, '<')
+    .replace(/大于等于/g, '≥')
+    .replace(/大于/g, '>')
+    .replace(/，/g, ',')
+    .replace(/、/g, '/')
+    .replace(/天以上/g, '天+')
+    .replace(/年以上/g, '年+');
+}
+
 const FUND_HISTORY_CACHE_PREFIX = 'stockvault_fundnav_';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 

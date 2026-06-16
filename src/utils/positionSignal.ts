@@ -38,6 +38,8 @@ export interface PositionSignalResult {
   dataPoints: number;
   /** 错误信息 */
   error?: string;
+  /** 基金赎回费率（仅基金类型有值） */
+  redemptionFee?: string;
 }
 
 export interface BacktestRow {
