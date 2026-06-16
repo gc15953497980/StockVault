@@ -638,3 +638,120 @@ export async function fetchETFNavHistory(
     return [];
   }
 }
+
+// ─── K-line chart data (candlestick OHLCV) ───
+
+export interface KlineBar {
+  date: string;   // YYYY-MM-DD
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export type KlinePeriod = 'day' | 'week' | 'month';
+
+const KLT_MAP: Record<KlinePeriod, number> = { day: 101, week: 102, month: 103 };
+const KL_COUNT_DEFAULTS: Record<KlinePeriod, number> = { day: 200, week: 100, month: 60 };
+const KL_CACHE_PREFIX = 'stockvault_kline_';
+
+interface CachedStockKline {
+  data: KlineBar[];
+  period: KlinePeriod;
+  ts: number;
+}
+
+function getKlineCacheKey(code: string, period: KlinePeriod): string {
+  // Strip sh/sz prefix if present to normalize
+  let raw = code;
+  if (raw.startsWith('sh') || raw.startsWith('sz')) raw = raw.slice(2);
+  return KL_CACHE_PREFIX + raw + '_' + period;
+}
+
+function klineCacheTTL(period: KlinePeriod): number {
+  switch (period) {
+    case 'day': return 3600_000;      // 1 hour
+    case 'week': return 4 * 3600_000; // 4 hours
+    case 'month': return 24 * 3600_000; // 24 hours
+  }
+}
+
+function getCachedStockKline(code: string, period: KlinePeriod): CachedStockKline | null {
+  try {
+    const raw = localStorage.getItem(getKlineCacheKey(code, period));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function setCachedStockKline(code: string, period: KlinePeriod, data: KlineBar[]) {
+  localStorage.setItem(getKlineCacheKey(code, period), JSON.stringify({
+    data, period, ts: Date.now(),
+  }));
+}
+
+function normalizeCode(code: string): { raw: string; market: '1' | '0' } {
+  let raw = code.trim();
+  // Strip sh/sz prefix if present
+  if (raw.startsWith('sh') || raw.startsWith('sz')) raw = raw.slice(2);
+  const market = (raw.startsWith('6') || raw.startsWith('5')) ? '1' : '0';
+  return { raw, market };
+}
+
+/**
+ * Fetch stock/ETF K-line data (OHLCV) for candlestick charts.
+ * Supports daily, weekly, and monthly periods.
+ * Data source: Eastmoney push2his API via /api/benchmark/kline proxy.
+ */
+export async function fetchStockKline(
+  code: string,
+  period: KlinePeriod = 'day',
+  count?: number,
+): Promise<KlineBar[]> {
+  const { raw, market } = normalizeCode(code);
+  const secid = `${market}.${raw}`;
+  const lmt = count ?? KL_COUNT_DEFAULTS[period];
+  const klt = KLT_MAP[period];
+
+  // Check cache
+  const cached = getCachedStockKline(code, period);
+  if (cached) {
+    const cacheAge = Date.now() - cached.ts;
+    if (cacheAge < klineCacheTTL(period) && cached.data.length >= lmt - 10) {
+      return cached.data;
+    }
+  }
+
+  try {
+    const url = `/api/benchmark/kline?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=${klt}&fqt=1&end=20500101&lmt=${lmt}`;
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if (json?.data?.klines) {
+      const result: KlineBar[] = json.data.klines
+        .map((line: string) => {
+          const parts = line.split(',');
+          return {
+            date: parts[0],
+            open: parseFloat(parts[1]) || 0,
+            close: parseFloat(parts[2]) || 0,
+            high: parseFloat(parts[3]) || 0,
+            low: parseFloat(parts[4]) || 0,
+            volume: parseFloat(parts[5]) || 0,
+          };
+        })
+        .filter((p: KlineBar) => p.close > 0 && p.open > 0)
+        .sort((a: KlineBar, b: KlineBar) => a.date.localeCompare(b.date));
+
+      if (result.length > 0) {
+        setCachedStockKline(code, period, result);
+      }
+      return result;
+    }
+    return cached?.data ?? [];
+  } catch {
+    // Return expired cache as fallback
+    return cached?.data ?? [];
+  }
+}

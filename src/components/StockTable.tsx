@@ -3,6 +3,7 @@ import { useStockStore } from '../store/useStockStore';
 import { calcStock, formatMoney, formatPercent, marketLabel } from '../utils/api';
 import { StockTxPanel, StockDividendPanel } from './TxPanel';
 import AveragingDownCalc from './AveragingDownCalc';
+import KlineChartModal from './KlineChartModal';
 import styles from './StockTable.module.css';
 
 interface Props {
@@ -24,6 +25,7 @@ export default function StockTable({ onEdit, onDelete, filterTag, hideNames, loa
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [avgDownId, setAvgDownId] = useState<string | null>(null);
+  const [klineStock, setKlineStock] = useState<{ code: string; name: string; market: typeof stocks[0]['market'] } | null>(null);
 
   const filtered = useMemo(() =>
     filterTag ? stocks.filter(s => s.tags.includes(filterTag)) : stocks,
@@ -156,6 +158,7 @@ export default function StockTable({ onEdit, onDelete, filterTag, hideNames, loa
                   <td className={styles.time}>{timeStr}</td>
                   <td>
                     <button className={styles.btnEdit} onClick={() => onEdit(stock.id)}>编辑</button>
+                    <button className={styles.btnDefault} onClick={() => setKlineStock({ code: stock.code, name: stock.name, market: stock.market })}>K线</button>
                     <button className={styles.btnDel} onClick={() => onDelete(stock.id)}>删除</button>
                   </td>
                 </tr>
@@ -204,6 +207,15 @@ export default function StockTable({ onEdit, onDelete, filterTag, hideNames, loa
           })}
         </tbody>
       </table>
+
+      {klineStock && (
+        <KlineChartModal
+          code={klineStock.code}
+          name={klineStock.name}
+          market={klineStock.market}
+          onClose={() => setKlineStock(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useWatchlistStore } from '../store/useWatchlistStore';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
 import { fetchStockPrices, fetchForeignPrices, fetchFundPrices, toStockCode, toFundCode, marketLabel } from '../utils/api';
+import KlineChartModal from './KlineChartModal';
 import type { WatchItem, Market } from '../types';
 import styles from './WatchlistView.module.css';
 
@@ -18,6 +19,7 @@ export default function WatchlistView() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [changePercents, setChangePercents] = useState<Record<string, number>>({});
   const [wlLoading, setWlLoading] = useState(false);
+  const [klineItem, setKlineItem] = useState<{ code: string; name: string; market: Market } | null>(null);
 
   const handleRefreshWatch = async () => {
     if (items.length === 0) return;
@@ -280,6 +282,9 @@ export default function WatchlistView() {
                   <td>
                     <button className={styles.btnSmall} onClick={() => handleEdit(item)}>编辑</button>
                     {item.type === 'stock' && (
+                      <button className={styles.btnSmall} onClick={() => setKlineItem({ code: item.code, name: item.name, market: item.market })}>K线</button>
+                    )}
+                    {item.type === 'stock' && (
                       <button className={styles.btnSmall} onClick={() => moveToStock(item)} title="转为股票持仓">→股票</button>
                     )}
                     {item.type === 'fund' && (
@@ -292,6 +297,15 @@ export default function WatchlistView() {
             })}
           </tbody>
         </table>
+      )}
+
+      {klineItem && (
+        <KlineChartModal
+          code={klineItem.code}
+          name={klineItem.name}
+          market={klineItem.market}
+          onClose={() => setKlineItem(null)}
+        />
       )}
     </div>
   );
