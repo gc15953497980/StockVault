@@ -136,9 +136,14 @@ export default function PositionSignal() {
 
   // Sort items
   const sorted = [...items].sort((a, b) => {
+    if (sortBy === 'redemptionFee') {
+      const da = parseFeeDays(a.result.redemptionFee);
+      const db = parseFeeDays(b.result.redemptionFee);
+      return sortDir === 'asc' ? da - db : db - da;
+    }
     const va = getSortValue(a, sortBy);
     const vb = getSortValue(b, sortBy);
-    if (sortBy === 'kind' || sortBy === 'name' || sortBy === 'redemptionFee') {
+    if (sortBy === 'kind' || sortBy === 'name') {
       return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
     }
     return sortDir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
@@ -348,6 +353,18 @@ function getSortValue(item: AnalysisItem, key: SortKey): string | number {
     case 'redemptionFee': return item.redemptionFee || '';
     default: return item.result[key] ?? 0;
   }
+}
+
+/** Extract minimum holding days from fee string for natural sorting.
+ *  "免费"→0, "≥7天"→7, "≥30天"→30, "≥1年"→365, "-"→Infinity */
+function parseFeeDays(fee?: string): number {
+  if (!fee || fee === '-') return Infinity;
+  if (fee === '免费') return 0;
+  const m = fee.match(/(\d+)\s*天/);
+  if (m) return parseInt(m[1], 10);
+  const y = fee.match(/(\d+)\s*年/);
+  if (y) return parseInt(y[1], 10) * 365;
+  return Infinity;
 }
 
 function fmtPct(v: number): string {
