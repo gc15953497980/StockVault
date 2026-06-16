@@ -77,6 +77,49 @@
   text-align: center; padding: 20px; color: var(--down);
 }
 
+/* ── Ratio Analysis Table ── */
+.ratioSection {
+  margin-top: 4px;
+}
+.ratioTitle {
+  font-size: 14px; color: var(--text-secondary); margin: 0 0 12px;
+}
+.ratioTable {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  line-height: 1.55;
+}
+.ratioTable th {
+  text-align: left; padding: 8px 10px; border-bottom: 2px solid var(--border-heavy);
+  color: var(--text-muted); font-weight: 600; white-space: nowrap;
+  background: var(--surface);
+}
+.ratioTable td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  color: var(--text); vertical-align: top;
+}
+.ratioTable tr:last-child td { border-bottom: none; }
+
+/* row highlight tiers */
+.ratioRow { transition: background 0.15s; }
+.activeRow {
+  font-weight: 600;
+  box-shadow: inset 4px 0 0 var(--primary);
+  background: var(--surface-hover);
+}
+
+/* tier backgrounds (applied to active row) */
+.tier0 { --tier-color: #3b82f6; } /* < 1.4  blue   */
+.tier1 { --tier-color: #22c55e; } /* 1.4-1.6 green */
+.tier2 { --tier-color: #14b8a6; } /* 1.7-2.1 teal  */
+.tier3 { --tier-color: #eab308; } /* 2.2-2.6 amber */
+.tier4 { --tier-color: #f97316; } /* 2.7-2.9 orange */
+.tier5 { --tier-color: #ef4444; } /* >= 3.0  red   */
+
+.activeRow td:first-child {
+  color: var(--tier-color);
+  font-size: 14px;
+}
+
 @media (max-width: 768px) {
   .cards { gap: 8px; }
   .card { min-width: 80px; padding: 10px 12px; }
