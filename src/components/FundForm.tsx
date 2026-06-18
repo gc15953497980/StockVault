@@ -88,7 +88,7 @@ export default function FundForm({ fund, onSave, onClose, onBatchSave }: Props) 
     if (r.name) setForm(prev => ({ ...prev, name: r.name! }));
     if (r.holdingAmount && r.holdingAmount > 0) setForm(prev => ({ ...prev, holdingAmount: r.holdingAmount! }));
     if (r.holdingCost && r.holdingCost > 0) setForm(prev => ({ ...prev, holdingCost: r.holdingCost! }));
-    if (r.sector && SECTOR_OPTIONS.includes(r.sector)) setForm(prev => ({ ...prev, sector: r.sector! }));
+    if (r.sector && (SECTOR_OPTIONS as readonly string[]).includes(r.sector)) setForm(prev => ({ ...prev, sector: r.sector! }));
     setSelectedResultIdx(idx);
   };
 
@@ -101,7 +101,7 @@ export default function FundForm({ fund, onSave, onClose, onBatchSave }: Props) 
       name: r.name || '',
       holdingAmount: r.holdingAmount || 0,
       holdingCost: r.holdingCost || 0,
-      sector: r.sector && SECTOR_OPTIONS.includes(r.sector) ? r.sector : '',
+      sector: r.sector && (SECTOR_OPTIONS as readonly string[]).includes(r.sector) ? r.sector : '',
     }));
     onBatchSave(funds);
     onClose();
@@ -119,8 +119,8 @@ export default function FundForm({ fund, onSave, onClose, onBatchSave }: Props) 
       } else {
         setRecogResults(results);
       }
-    } catch (err: any) {
-      setRecogError(err.message || '识别失败');
+    } catch (err) {
+      setRecogError(err instanceof Error ? err.message : '识别失败');
     } finally {
       setRecognizing(false);
     }

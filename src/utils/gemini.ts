@@ -1,4 +1,4 @@
-export const DEFAULT_KEY = 'AIzaSyD7zO1J1m7lb29pQI5f-kD4ufr_Xw5kXlY';
+export const DEFAULT_KEY = '';
 export const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
 const LS_KEY = 'stockvault_gemini_key';
 const LS_MODEL = 'stockvault_gemini_model';
@@ -29,6 +29,9 @@ export interface FundRecognitionResult {
 
 export async function recognizeFundFromImage(base64Data: string, mimeType: string): Promise<FundRecognitionResult[]> {
   const apiKey = getGeminiKey();
+  if (!apiKey) {
+    throw new Error('未配置 Gemini API Key，请先在表单中点击「API 设置」填入你的 Key');
+  }
   const model = getGeminiModel();
   const url = `/api/gemini/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -112,14 +115,14 @@ function extractJSON(text: string): FundRecognitionResult[] {
     if (arrayStart !== -1 && arrayEnd > arrayStart) {
       try {
         parsed = JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1));
-      } catch (e: any) {
-        throw new Error(`JSON数组解析失败: ${e.message}\n原始文本: ${text.slice(0, 300)}`);
+      } catch (e) {
+        throw new Error(`JSON数组解析失败: ${e instanceof Error ? e.message : String(e)}\n原始文本: ${text.slice(0, 300)}`, { cause: e });
       }
     } else if (objStart !== -1 && objEnd > objStart) {
       try {
         parsed = JSON.parse(cleaned.slice(objStart, objEnd + 1));
-      } catch (e: any) {
-        throw new Error(`JSON对象解析失败: ${e.message}\n原始文本: ${text.slice(0, 300)}`);
+      } catch (e) {
+        throw new Error(`JSON对象解析失败: ${e instanceof Error ? e.message : String(e)}\n原始文本: ${text.slice(0, 300)}`, { cause: e });
       }
     } else {
       throw new Error('未能从识别结果中找到JSON: ' + text.slice(0, 200));

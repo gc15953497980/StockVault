@@ -69,7 +69,13 @@ export default class ErrorBoundary extends React.Component<Props, State> {
             </button>
             <button
               onClick={() => {
-                localStorage.clear();
+                // Only clear app data, not all localStorage (avoid clobbering other same-origin apps)
+                const keysToRemove: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                  const k = localStorage.key(i);
+                  if (k && k.startsWith('stockvault_')) keysToRemove.push(k);
+                }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
                 window.location.reload();
               }}
               style={{

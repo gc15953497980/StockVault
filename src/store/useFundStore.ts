@@ -1,14 +1,8 @@
 import { create } from 'zustand';
 import type { Fund, FundWithPrice } from '../types';
 import { fetchFundPrices, fetchFundHistoryNAV, calcAvgDownside } from '../utils/api';
-import { pushToGist } from '../utils/gistSync';
+import { autoSyncPush } from '../utils/gistSync';
 import { useAccountStore } from './useAccountStore';
-
-function autoSyncPush() {
-  if (localStorage.getItem('stockvault_sync_auto') === '1') {
-    pushToGist().catch(() => {});
-  }
-}
 
 interface FundStore {
   funds: Fund[];

@@ -64,10 +64,10 @@ export default function KlineChartModal({ code, name, market, onClose }: Props) 
   // Fetch data when period changes
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setError(null);
-
-    (async () => {
+    // Defer setState to avoid cascading renders (react-hooks/set-state-in-effect)
+    const run = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const data = await fetchStockKline(code, period);
         if (!active) return;
@@ -81,7 +81,8 @@ export default function KlineChartModal({ code, name, market, onClose }: Props) 
       } finally {
         if (active) setLoading(false);
       }
-    })();
+    };
+    void run();
 
     return () => { active = false; };
   }, [code, period]);

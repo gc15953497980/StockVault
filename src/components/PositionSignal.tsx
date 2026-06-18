@@ -29,7 +29,7 @@ export default function PositionSignal() {
   const stocks = useStockStore(s => s.stocks);
 
   // Only A-share stocks (skip HK/US which use different APIs)
-  const aStocks: Stock[] = stocks.filter(s => !s.market || s.market === 'sh' || s.market === 'sz' || s.market === 'bj');
+  const aStocks: Stock[] = stocks.filter(s => !s.market || s.market === 'a');
 
   const [items, setItems] = useState<AnalysisItem[]>([]);
   const [backtests, setBacktests] = useState<Map<string, BacktestResult>>(new Map());
@@ -106,7 +106,10 @@ export default function PositionSignal() {
 
   // Auto-run on mount
   useEffect(() => {
-    if (funds.length > 0 || aStocks.length > 0) runAnalysis();
+    if (funds.length > 0 || aStocks.length > 0) {
+      // Defer to microtask to avoid cascading renders (react-hooks/set-state-in-effect)
+      Promise.resolve().then(() => runAnalysis());
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRowClick = useCallback(async (kind: string, code: string, redemptionFee?: string) => {

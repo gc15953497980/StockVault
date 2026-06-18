@@ -1,12 +1,6 @@
 import { create } from 'zustand';
 import type { StockTx, FundTx, StockDividend, FundDividend } from '../types';
-import { pushToGist } from '../utils/gistSync';
-
-function autoSyncPush() {
-  if (localStorage.getItem('stockvault_sync_auto') === '1') {
-    pushToGist().catch(() => {});
-  }
-}
+import { autoSyncPush } from '../utils/gistSync';
 
 interface TxStore {
   stockTxs: Record<string, StockTx[]>;

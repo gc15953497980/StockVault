@@ -208,3 +208,21 @@ export async function createGist(token: string): Promise<{ success: boolean; gis
     return { success: false, message: (e as Error).message };
   }
 }
+
+// ─── Debounced auto-sync helper ───
+// Multiple stores call this on every mutation; debounce to avoid hammering the Gist API.
+let autoSyncTimer: ReturnType<typeof setTimeout> | null = null;
+const AUTO_SYNC_DEBOUNCE_MS = 30_000; // 30s
+
+/**
+ * Trigger a debounced Gist push if auto-sync is enabled.
+ * Repeated calls within the debounce window collapse into a single push.
+ */
+export function autoSyncPush(): void {
+  if (localStorage.getItem('stockvault_sync_auto') !== '1') return;
+  if (autoSyncTimer) clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(() => {
+    autoSyncTimer = null;
+    pushToGist().catch(() => { /* silent: auto-sync is best-effort */ });
+  }, AUTO_SYNC_DEBOUNCE_MS);
+}

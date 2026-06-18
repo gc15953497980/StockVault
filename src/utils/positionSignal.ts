@@ -226,6 +226,7 @@ export function backtestStrategies(
 
   const result: BacktestResult = {
     dataPoints: filtered.length,
+    holdDays: [...days],
     drop: {} as Record<number, BacktestRow>,
     std: {} as Record<number, BacktestRow>,
   };

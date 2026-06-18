@@ -21,13 +21,13 @@ export default function WatchlistView() {
   const [wlLoading, setWlLoading] = useState(false);
   const [klineItem, setKlineItem] = useState<{ code: string; name: string; market: Market } | null>(null);
 
-  const handleRefreshWatch = async () => {
-    if (items.length === 0) return;
+  const refreshWatchlist = async (itemList: WatchItem[]) => {
+    if (itemList.length === 0) return;
     setWlLoading(true);
     try {
-      const aStocks = items.filter(i => i.type === 'stock' && i.market === 'a');
-      const foreignStocks = items.filter(i => i.type === 'stock' && i.market !== 'a');
-      const funds = items.filter(i => i.type === 'fund');
+      const aStocks = itemList.filter(i => i.type === 'stock' && i.market === 'a');
+      const foreignStocks = itemList.filter(i => i.type === 'stock' && i.market !== 'a');
+      const funds = itemList.filter(i => i.type === 'fund');
 
       const newPrices: Record<string, number> = {};
       const newCP: Record<string, number> = {};
@@ -41,7 +41,6 @@ export default function WatchlistView() {
           }
         }
       }
-
       if (foreignStocks.length > 0) {
         const result = await fetchForeignPrices(foreignStocks.map(s => ({ code: s.code, market: s.market })));
         for (const s of foreignStocks) {
@@ -51,7 +50,6 @@ export default function WatchlistView() {
           }
         }
       }
-
       if (funds.length > 0) {
         const result = await fetchFundPrices(funds.map(f => f.code));
         for (const f of funds) {
@@ -61,7 +59,6 @@ export default function WatchlistView() {
           }
         }
       }
-
       setPrices(newPrices);
       setChangePercents(newCP);
     } finally {
@@ -69,52 +66,11 @@ export default function WatchlistView() {
     }
   };
 
+  const handleRefreshWatch = () => refreshWatchlist(items);
+
   useEffect(() => {
-    const refresh = async () => {
-      if (items.length === 0) return;
-      setWlLoading(true);
-      try {
-        const aStocks = items.filter(i => i.type === 'stock' && i.market === 'a');
-        const foreignStocks = items.filter(i => i.type === 'stock' && i.market !== 'a');
-        const funds = items.filter(i => i.type === 'fund');
-
-        const newPrices: Record<string, number> = {};
-        const newCP: Record<string, number> = {};
-
-        if (aStocks.length > 0) {
-          const result = await fetchStockPrices(aStocks.map(s => s.code));
-          for (const s of aStocks) {
-            if (result[s.code]) {
-              newPrices[s.code] = result[s.code].price;
-              newCP[s.code] = result[s.code].changePercent;
-            }
-          }
-        }
-        if (foreignStocks.length > 0) {
-          const result = await fetchForeignPrices(foreignStocks.map(s => ({ code: s.code, market: s.market })));
-          for (const s of foreignStocks) {
-            if (result[s.code]) {
-              newPrices[s.code] = result[s.code].price;
-              newCP[s.code] = result[s.code].changePercent;
-            }
-          }
-        }
-        if (funds.length > 0) {
-          const result = await fetchFundPrices(funds.map(f => f.code));
-          for (const f of funds) {
-            if (result[f.code]) {
-              newPrices[f.code] = result[f.code].currentNAV;
-              newCP[f.code] = result[f.code].dailyChangePercent;
-            }
-          }
-        }
-        setPrices(newPrices);
-        setChangePercents(newCP);
-      } finally {
-        setWlLoading(false);
-      }
-    };
-    refresh();
+    // Defer to microtask to avoid cascading renders (react-hooks/set-state-in-effect)
+    Promise.resolve().then(() => refreshWatchlist(items));
   }, [items]);
 
   const handleAdd = () => {

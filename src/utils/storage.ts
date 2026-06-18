@@ -132,13 +132,18 @@ export const storage = {
 
   /**
    * Migrate existing localStorage data to IndexedDB.
-   * Call once on app startup.
+   * Call once on app startup. Uses a flag to avoid re-migrating on every launch.
+   * Note: localStorage data is kept as fallback/backup until stores migrate to `storage.get`.
    */
   async migrateFromLS(): Promise<number> {
+    const MIGRATED_FLAG = 'stockvault_idb_migrated';
+    if (localStorage.getItem(MIGRATED_FLAG) === '1') return 0;
+
     let count = 0;
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key || !key.startsWith('stockvault_')) continue;
+      if (key === MIGRATED_FLAG) continue;
       const raw = localStorage.getItem(key);
       if (raw === null) continue;
       try {
@@ -147,6 +152,7 @@ export const storage = {
         count++;
       } catch { /* skip bad JSON */ }
     }
+    localStorage.setItem(MIGRATED_FLAG, '1');
     return count;
   },
 };

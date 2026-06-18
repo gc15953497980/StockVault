@@ -13,13 +13,17 @@ function getNotifiedSet(): Set<string> {
 
 function saveNotifiedSet(set: Set<string>) {
   try {
-    const maxSize = 200;
-    const arr = [...set];
-    if (arr.length > maxSize) {
-      localStorage.setItem(NOTIFIED_KEY, JSON.stringify(arr.slice(-maxSize)));
-    } else {
-      localStorage.setItem(NOTIFIED_KEY, JSON.stringify(arr));
-    }
+    // Prune by date: keep only entries from the last 30 days to avoid unbounded growth
+    // while still preventing same-day duplicates. Entry format: `${type}_${id}_${date}`
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const arr = [...set].filter(entry => {
+      const parts = entry.split('_');
+      const datePart = parts[parts.length - 1];
+      return datePart >= cutoffStr;
+    });
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify(arr));
   } catch { /* ignore */ }
 }
 
