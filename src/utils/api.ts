@@ -28,27 +28,33 @@ async function fetchGBK(url: string): Promise<string> {
 
 // Fields: 0=名称, 1=今开, 2=昨收, 3=现价, 4=最高, 5=最低, ...
 // 44=流通市值, 45=总市值
+const STOCK_PRICE_CHUNK = 400; // split large requests to avoid 431
+
 export async function fetchStockPrices(
   codes: string[]
 ): Promise<Record<string, PriceResult>> {
   if (codes.length === 0) return {};
-  const url = SINA_API + codes.join(',');
-  const text = await fetchGBK(url);
-
   const result: Record<string, PriceResult> = {};
-  const regex = /var hq_str_(\w+)="([^"]*)"/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const code = match[1];
-    const fields = match[2].split(',');
-    const price = parseFloat(fields[3]) || 0;
-    const prevClose = parseFloat(fields[2]) || price;
-    result[code] = {
-      name: fields[0],
-      price,
-      marketCap: parseFloat(fields[44]) || 0,
-      changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
-    };
+
+  for (let i = 0; i < codes.length; i += STOCK_PRICE_CHUNK) {
+    const chunk = codes.slice(i, i + STOCK_PRICE_CHUNK);
+    const url = SINA_API + chunk.join(',');
+    const text = await fetchGBK(url);
+
+    const regex = /var hq_str_(\w+)="([^"]*)"/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const code = match[1];
+      const fields = match[2].split(',');
+      const price = parseFloat(fields[3]) || 0;
+      const prevClose = parseFloat(fields[2]) || price;
+      result[code] = {
+        name: fields[0],
+        price,
+        marketCap: parseFloat(fields[44]) || 0,
+        changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
+      };
+    }
   }
   return result;
 }
@@ -58,35 +64,37 @@ export async function fetchForeignPrices(
   codes: { code: string; market: Market }[]
 ): Promise<Record<string, { price: number; changePercent: number }>> {
   const result: Record<string, { price: number; changePercent: number }> = {};
-  const sinaCodes = codes.map(c => {
+  if (codes.length === 0) return result;
+
+  const toSinaCode = (c: { code: string; market: Market }) => {
     if (c.market === 'hk') return 'rt_hk' + c.code.replace('hk', '');
     if (c.market === 'us') return 'gb_' + c.code.replace('us_', '');
     return c.code;
-  });
-  if (sinaCodes.length === 0) return result;
+  };
+  const revMap = new Map<string, string>(); // sinaCode -> ourCode
+  for (const c of codes) revMap.set(toSinaCode(c), c.code);
 
-  try {
-    const url = SINA_API + sinaCodes.join(',');
-    const text = await fetchGBK(url);
-    const regex = /var hq_str_(\w+)="([^"]*)"/g;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const rawCode = match[1];
-      const fields = match[2].split(',');
-      const price = parseFloat(fields[3]) || 0;
-      const prevClose = parseFloat(fields[2]) || price;
-      const changePercent = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
-      // Map back to our code
-      for (const c of codes) {
-        const mapped = c.market === 'hk' ? 'rt_hk' + c.code.replace('hk', '')
-          : c.market === 'us' ? 'gb_' + c.code.replace('us_', '')
-          : c.code;
-        if (mapped === rawCode) {
-          result[c.code] = { price, changePercent };
-        }
+  for (let i = 0; i < codes.length; i += STOCK_PRICE_CHUNK) {
+    const chunk = codes.slice(i, i + STOCK_PRICE_CHUNK);
+    const url = SINA_API + chunk.map(toSinaCode).join(',');
+    try {
+      const text = await fetchGBK(url);
+      const regex = /var hq_str_(\w+)="([^"]*)"/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const rawCode = match[1];
+        const ourCode = revMap.get(rawCode);
+        if (!ourCode) continue;
+        const fields = match[2].split(',');
+        const price = parseFloat(fields[3]) || 0;
+        const prevClose = parseFloat(fields[2]) || price;
+        result[ourCode] = {
+          price,
+          changePercent: prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0,
+        };
       }
-    }
-  } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
   return result;
 }
 
@@ -654,9 +662,8 @@ export interface KlineBar {
 
 export type KlinePeriod = 'day' | 'week' | 'month';
 
-const KLT_MAP: Record<KlinePeriod, number> = { day: 101, week: 102, month: 103 };
 const KL_COUNT_DEFAULTS: Record<KlinePeriod, number> = { day: 200, week: 100, month: 60 };
-const KL_CACHE_PREFIX = 'stockvault_kline_';
+const KL_CACHE_PREFIX = 'stockvault_kline_v2_';
 
 interface CachedStockKline {
   data: KlineBar[];
@@ -693,6 +700,134 @@ function setCachedStockKline(code: string, period: KlinePeriod, data: KlineBar[]
   }));
 }
 
+/** Result item from fetchStockList */
+export interface StockListItem {
+  code: string;
+  name: string;
+  market: 'sh' | 'sz';
+}
+
+/**
+ * Fetch all A-share stocks, excluding 创业板(300/301), 科创板(688),
+ * 北交所(8/4), and ST stocks. Returns raw 6-digit codes.
+ */
+export async function fetchStockList(): Promise<StockListItem[]> {
+  const errors: string[] = [];
+
+  // Try 1: local static file
+  try {
+    const staticRes = await fetch('/stock-list.json');
+    if (staticRes.ok) {
+      const data = await staticRes.json() as StockListItem[];
+      if (data.length > 0) return data;
+    } else {
+      errors.push(`静态文件: HTTP ${staticRes.status}`);
+    }
+  } catch (e: unknown) {
+    errors.push(`静态文件: ${e instanceof Error ? e.message : 'fetch failed'}`);
+  }
+
+  // Try 2: Sina API — try both vip.stock and money.finance hosts
+  const sinaHosts = ['/api/sina-stocklist', '/api/sina-stocklist2'];
+  for (const host of sinaHosts) {
+    for (const node of ['sh_a', 'sz_a']) {
+      try {
+        const url = `${host}/quotes_service/api/json_v2.php/Market_Center.getHQNodeData?page=1&num=5000&sort=symbol&asc=1&node=${node}`;
+        const text = await fetchGBK(url);
+        if (!text || text.length < 100) {
+          errors.push(`Sina ${node}: response too short (${text.length} chars)`);
+          continue;
+        }
+
+        let items: Array<Record<string, string>>;
+        try {
+          items = JSON.parse(text);
+        } catch {
+          const match = text.match(/\[[\s\S]*\]/);
+          if (!match) {
+            errors.push(`Sina ${node}: not JSON, first 200 chars: ${text.slice(0, 200)}`);
+            continue;
+          }
+          items = JSON.parse(match[0]);
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+          errors.push(`Sina ${node}: empty items array`);
+          continue;
+        }
+
+        const result = parseStockItems(items);
+        if (result.length > 0) return result;
+        errors.push(`Sina ${node}: parsed ${items.length} items but all filtered out`);
+      } catch (e: unknown) {
+        errors.push(`Sina ${node} (${host}): ${e instanceof Error ? e.message : 'fetch failed'}`);
+      }
+    }
+  }
+
+  // Try 3: Eastmoney via existing benchmark proxy with the clist endpoint
+  try {
+    const params = new URLSearchParams({
+      fid: 'f3', po: '1', pz: '5000', pn: '1', np: '1',
+      fltt: '2', invt: '2', fs: 'm:0+t:6,m:0+t:80', fields: 'f12,f14',
+    });
+    const url = `/api/benchmark/api/qt/clist/get?${params.toString()}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.data?.diff) {
+        const items = (json.data.diff as Array<{ f12: string; f14: string }>).map(d => ({
+          code: d.f12,
+          name: d.f14,
+          symbol: d.f12,
+        }));
+        const result = parseStockItems(items);
+        if (result.length > 0) return result;
+        errors.push(`Eastmoney: parsed ${items.length} items but all filtered out`);
+      } else {
+        errors.push(`Eastmoney: API returned no data.diff, total=${json?.data?.total}`);
+      }
+    } else {
+      errors.push(`Eastmoney: HTTP ${res.status}`);
+    }
+  } catch (e: unknown) {
+    errors.push(`Eastmoney: ${e instanceof Error ? e.message : 'fetch failed'}`);
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`所有数据源均失败：\n${errors.join('\n')}`);
+  }
+  return [];
+}
+
+function parseStockItems(items: Array<Record<string, string>>): StockListItem[] {
+  const all: StockListItem[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    const rawCode: string = item.code || item.symbol || '';
+    if (!rawCode || rawCode.length < 6) continue;
+    const code = rawCode.slice(-6);
+    if (seen.has(code)) continue;
+
+    const name = (item.name || '').replace(/%/g, '');
+
+    if (code.startsWith('300') || code.startsWith('301')) continue;
+    if (code.startsWith('688')) continue;
+    if (code.startsWith('8') || code.startsWith('4')) continue;
+    if (name.includes('ST')) continue;
+
+    seen.add(code);
+    all.push({
+      code,
+      name,
+      market: (code.startsWith('6') || code.startsWith('5')) ? 'sh' : 'sz',
+    });
+  }
+
+  return all;
+}
+
 function normalizeCode(code: string): { raw: string; market: '1' | '0' } {
   let raw = code.trim();
   // Strip sh/sz prefix if present
@@ -702,21 +837,70 @@ function normalizeCode(code: string): { raw: string; market: '1' | '0' } {
 }
 
 /**
+ * Fetch stock/ETF daily K-line from Sina.
+ * Volume is returned in 手 (Sina gives 股, we convert).
+ */
+async function fetchSinaDailyKline(code: string, count: number): Promise<KlineBar[]> {
+  const { raw, market } = normalizeCode(code);
+  const prefix = market === '1' ? 'sh' : 'sz';
+  const symbol = `${prefix}${raw}`;
+
+  const url = `/api/sina-kline/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=240&ma=no&datalen=${count}`;
+  const res = await fetch(url);
+  const json: Array<Record<string, string>> = await res.json();
+
+  if (!Array.isArray(json)) return [];
+
+  return json
+    .map(item => ({
+      date: item.day || '',
+      open: parseFloat(item.open) || 0,
+      close: parseFloat(item.close) || 0,
+      high: parseFloat(item.high) || 0,
+      low: parseFloat(item.low) || 0,
+      volume: (parseFloat(item.volume) || 0) / 100, // 股 → 手
+    }))
+    .filter(p => p.date && p.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function aggregateBars(daily: KlineBar[], period: 'week' | 'month'): KlineBar[] {
+  const groups = new Map<string, KlineBar[]>();
+  for (const bar of daily) {
+    const d = new Date(bar.date);
+    const key = period === 'week'
+      ? `${d.getFullYear()}-W${String(Math.ceil((d.getDate() + (d.getDay() || 7) - d.getDay()) / 7)).padStart(2, '0')}`
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(bar);
+  }
+  const result: KlineBar[] = [];
+  for (const [, bars] of groups) {
+    if (bars.length === 0) continue;
+    result.push({
+      date: bars[0].date,
+      open: bars[0].open,
+      close: bars[bars.length - 1].close,
+      high: Math.max(...bars.map(b => b.high)),
+      low: Math.min(...bars.map(b => b.low)),
+      volume: bars.reduce((s, b) => s + b.volume, 0),
+    });
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
  * Fetch stock/ETF K-line data (OHLCV) for candlestick charts.
  * Supports daily, weekly, and monthly periods.
- * Data source: Eastmoney push2his API via /api/benchmark/kline proxy.
+ * Data source: Sina finance API for daily; week/month aggregated from daily.
  */
 export async function fetchStockKline(
   code: string,
   period: KlinePeriod = 'day',
   count?: number,
 ): Promise<KlineBar[]> {
-  const { raw, market } = normalizeCode(code);
-  const secid = `${market}.${raw}`;
   const lmt = count ?? KL_COUNT_DEFAULTS[period];
-  const klt = KLT_MAP[period];
 
-  // Check cache
   const cached = getCachedStockKline(code, period);
   if (cached) {
     const cacheAge = Date.now() - cached.ts;
@@ -726,34 +910,22 @@ export async function fetchStockKline(
   }
 
   try {
-    const url = `/api/benchmark/kline?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=${klt}&fqt=1&end=20500101&lmt=${lmt}`;
-    const res = await fetch(url);
-    const json = await res.json();
+    let result: KlineBar[];
 
-    if (json?.data?.klines) {
-      const result: KlineBar[] = json.data.klines
-        .map((line: string) => {
-          const parts = line.split(',');
-          return {
-            date: parts[0],
-            open: parseFloat(parts[1]) || 0,
-            close: parseFloat(parts[2]) || 0,
-            high: parseFloat(parts[3]) || 0,
-            low: parseFloat(parts[4]) || 0,
-            volume: parseFloat(parts[5]) || 0,
-          };
-        })
-        .filter((p: KlineBar) => p.close > 0 && p.open > 0)
-        .sort((a: KlineBar, b: KlineBar) => a.date.localeCompare(b.date));
-
-      if (result.length > 0) {
-        setCachedStockKline(code, period, result);
-      }
-      return result;
+    if (period === 'day') {
+      result = await fetchSinaDailyKline(code, lmt);
+    } else {
+      // Fetch enough daily bars to cover week/month aggregation
+      const dailyCount = period === 'week' ? lmt * 10 : lmt * 30;
+      const daily = await fetchSinaDailyKline(code, dailyCount);
+      result = aggregateBars(daily, period).slice(-lmt);
     }
-    return cached?.data ?? [];
+
+    if (result.length > 0) {
+      setCachedStockKline(code, period, result);
+    }
+    return result;
   } catch {
-    // Return expired cache as fallback
     return cached?.data ?? [];
   }
 }

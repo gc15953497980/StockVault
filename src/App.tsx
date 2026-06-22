@@ -4,6 +4,7 @@ import SyncPanel from './components/SyncPanel';
 import Dashboard from './components/Dashboard';
 import WatchlistView from './components/WatchlistView';
 import PositionSignal from './components/PositionSignal';
+import ZScoreSignal from './components/ZScoreSignal';
 const GoldCostView = lazy(() => import('./components/GoldCostView'));
 import AccountSwitcher from './components/AccountSwitcher';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -15,7 +16,7 @@ import { useMarketCloseSnapshot } from './hooks/useMarketCloseSnapshot';
 import { useAccountStore } from './store/useAccountStore';
 import styles from './App.module.css';
 
-type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost' | 'positionsignal';
+type Tab = 'dashboard' | 'holdings' | 'watchlist' | 'goldcost' | 'positionsignal' | 'zscore';
 
 const TAB_INFO: { key: Tab; label: string; shortcut: string }[] = [
   { key: 'dashboard', label: '概览', shortcut: '1' },
@@ -23,6 +24,7 @@ const TAB_INFO: { key: Tab; label: string; shortcut: string }[] = [
   { key: 'watchlist', label: '关注', shortcut: '3' },
   { key: 'goldcost', label: '金矿成本', shortcut: '4' },
   { key: 'positionsignal', label: '仓位信号', shortcut: '5' },
+  { key: 'zscore', label: '个股信号', shortcut: '6' },
 ];
 
 function getTheme(): 'light' | 'dark' {
@@ -81,6 +83,7 @@ export default function App() {
     '3': () => setActiveTab('watchlist'),
     '4': () => setActiveTab('goldcost'),
     '5': () => setActiveTab('positionsignal'),
+    '6': () => setActiveTab('zscore'),
     '?': () => setShowShortcuts(v => !v),
   });
 
@@ -166,6 +169,7 @@ export default function App() {
           {activeTab === 'watchlist' && <WatchlistView />}
           {activeTab === 'goldcost' && <GoldCostView />}
           {activeTab === 'positionsignal' && <PositionSignal />}
+          {activeTab === 'zscore' && <ZScoreSignal />}
         </ErrorBoundary>
       </Suspense>
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}

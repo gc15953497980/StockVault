@@ -40,6 +40,31 @@ export default defineConfig({
           Referer: 'https://fundf10.eastmoney.com/',
         },
       },
+
+      '/api/sina-stocklist': {
+        target: 'https://vip.stock.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-stocklist/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn/',
+        },
+      },
+      '/api/sina-stocklist2': {
+        target: 'https://money.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-stocklist2/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn/',
+        },
+      },
+      '/api/sina-kline': {
+        target: 'https://money.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-kline/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn',
+        },
+      },
       '/api/gemini': {
         target: 'https://generativelanguage.googleapis.com',
         changeOrigin: true,

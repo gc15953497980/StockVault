@@ -4,6 +4,7 @@ import type { WatchItem } from '../types';
 interface WatchlistStore {
   items: WatchItem[];
   addItem: (item: WatchItem) => void;
+  addItems: (items: WatchItem[]) => void;
   updateItem: (item: WatchItem) => void;
   deleteItem: (id: string) => void;
   setItems: (items: WatchItem[]) => void;
@@ -27,6 +28,12 @@ export const useWatchlistStore = create<WatchlistStore>((set, get) => ({
 
   addItem: (item) => {
     const items = [...get().items, item];
+    save(items);
+    set({ items });
+  },
+
+  addItems: (newItems) => {
+    const items = [...get().items, ...newItems];
     save(items);
     set({ items });
   },

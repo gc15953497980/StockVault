@@ -9,6 +9,11 @@
 
 .count { font-size: 12px; color: var(--text-muted); }
 
+.importMsg {
+  padding: 8px 12px; margin-bottom: 12px; background: var(--tag-bg, #e8f5e9);
+  color: var(--text-secondary); border-radius: 6px; font-size: 13px;
+}
+
 .empty {
   text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px;
 }
@@ -30,6 +35,9 @@
 .fundTag { color: var(--primary); }
 .up { color: var(--up); }
 .down { color: var(--down); }
+
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: var(--text); }
 
 .note { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
 

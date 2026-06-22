@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useWatchlistStore } from '../store/useWatchlistStore';
 import { useStockStore } from '../store/useStockStore';
 import { useFundStore } from '../store/useFundStore';
-import { fetchStockPrices, fetchForeignPrices, fetchFundPrices, toStockCode, toFundCode, marketLabel } from '../utils/api';
+import { fetchStockPrices, fetchForeignPrices, fetchFundPrices, toStockCode, toFundCode, marketLabel, fetchStockList } from '../utils/api';
 import KlineChartModal from './KlineChartModal';
 import type { WatchItem, Market } from '../types';
 import styles from './WatchlistView.module.css';
 
 export default function WatchlistView() {
-  const { items, addItem, updateItem, deleteItem } = useWatchlistStore();
+  const { items, addItem, addItems, updateItem, deleteItem } = useWatchlistStore();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -19,7 +19,51 @@ export default function WatchlistView() {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [changePercents, setChangePercents] = useState<Record<string, number>>({});
   const [wlLoading, setWlLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
   const [klineItem, setKlineItem] = useState<{ code: string; name: string; market: Market } | null>(null);
+  const [sortBy, setSortBy] = useState<'price' | 'changePercent' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleBatchImport = async () => {
+    if (!window.confirm('将导入所有A股主板股票（排除创业板、科创板、北交所、ST），确认继续？')) return;
+    setImporting(true);
+    setImportMsg('正在拉取A股列表...');
+    try {
+      const list = await fetchStockList();
+      if (list.length === 0) {
+        setImportMsg('未获取到股票数据');
+        return;
+      }
+      setImportMsg(`获取到 ${list.length} 只股票，正在导入...`);
+      const existingCodes = new Set(items.map(i => i.code));
+      const now = new Date().toISOString();
+      const newItems: WatchItem[] = [];
+      for (const s of list) {
+        const wlCode = toStockCode(s.code, 'a');
+        if (existingCodes.has(wlCode)) continue;
+        newItems.push({
+          id: Date.now().toString(36) + '_' + s.code,
+          code: wlCode,
+          name: s.name,
+          type: 'stock',
+          market: 'a',
+          note: '',
+          addedAt: now,
+        });
+      }
+      if (newItems.length > 0) {
+        addItems(newItems);
+        setImportMsg(`完成：新增 ${newItems.length} 只股票到关注列表（已跳过 ${list.length - newItems.length} 只重复）`);
+      } else {
+        setImportMsg('所有股票已在关注列表中，无需导入');
+      }
+    } catch (e: unknown) {
+      setImportMsg(`导入失败：${e instanceof Error ? e.message : '网络错误'}`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const refreshWatchlist = async (itemList: WatchItem[]) => {
     if (itemList.length === 0) return;
@@ -151,11 +195,15 @@ export default function WatchlistView() {
     <div>
       <div className={styles.toolbar}>
         <button className={styles.btn} onClick={handleAdd}>+ 添加关注</button>
+        <button className={styles.btn} onClick={handleBatchImport} disabled={importing}>
+          {importing ? '导入中...' : '批量导入A股'}
+        </button>
         <button className={styles.btn} onClick={handleRefreshWatch} disabled={wlLoading}>
           {wlLoading ? '刷新中...' : '刷新行情'}
         </button>
         <span className={styles.count}>{items.length} 个关注标的</span>
       </div>
+      {importMsg && <div className={styles.importMsg}>{importMsg}</div>}
 
       {showForm && (
         <div className={styles.formOverlay} onClick={() => setShowForm(false)}>
@@ -205,6 +253,29 @@ export default function WatchlistView() {
       {items.length === 0 ? (
         <div className={styles.empty}>暂无关注标的，点击上方"添加关注"开始</div>
       ) : (
+        (() => {
+          const sorted = [...items].sort((a, b) => {
+            if (!sortBy) return 0;
+            const av = sortBy === 'price' ? (prices[a.code] ?? -Infinity) : (changePercents[a.code] ?? -Infinity);
+            const bv = sortBy === 'price' ? (prices[b.code] ?? -Infinity) : (changePercents[b.code] ?? -Infinity);
+            return sortOrder === 'desc' ? bv - av : av - bv;
+          });
+
+          const handleSort = (col: 'price' | 'changePercent') => {
+            if (sortBy === col) {
+              setSortOrder(o => o === 'desc' ? 'asc' : 'desc');
+            } else {
+              setSortBy(col);
+              setSortOrder('desc');
+            }
+          };
+
+          const sortArrow = (col: 'price' | 'changePercent') => {
+            if (sortBy !== col) return ' ↕';
+            return sortOrder === 'desc' ? ' ↓' : ' ↑';
+          };
+
+          return (
         <table className={styles.table}>
           <thead>
             <tr>
@@ -212,14 +283,14 @@ export default function WatchlistView() {
               <th>代码</th>
               <th>名称</th>
               <th>市场</th>
-              <th>最新价</th>
-              <th>涨跌幅</th>
+              <th className={styles.sortable} onClick={() => handleSort('price')}>最新价{sortArrow('price')}</th>
+              <th className={styles.sortable} onClick={() => handleSort('changePercent')}>涨跌幅{sortArrow('changePercent')}</th>
               <th>备注</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            {items.map(item => {
+            {sorted.map(item => {
               const price = prices[item.code];
               const cp = changePercents[item.code];
               return (
@@ -253,6 +324,8 @@ export default function WatchlistView() {
             })}
           </tbody>
         </table>
+          );
+        })()
       )}
 
       {klineItem && (
