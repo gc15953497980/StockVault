@@ -28,7 +28,7 @@ export interface SignalResult {
 
 // ─── Constants ───
 
-const MIN_TURNOVER = 5e9;
+const MIN_TURNOVER = 0;
 const SELL_THRESHOLD = 1.5;
 const SELL_STRONG = 2.0;
 const BUY_THRESHOLD = -1.5;
@@ -78,7 +78,7 @@ export function generateSignal(bars: KlineBar[]): SignalResult | null {
 
   const blockedByVolume = avgTurnover < MIN_TURNOVER;
   const blockedByNewLow = consecutiveNewLows >= 3;
-  const trendOk = z120 ? z120.zScore < 0 : false;
+  const trendOk = z120 ? z120.zScore > 0 : false;
   const z120s = z120?.zScore ?? 0;
 
   let direction: SignalDirection = 'none';
@@ -111,7 +111,7 @@ export function generateSignal(bars: KlineBar[]): SignalResult | null {
     const blockers: string[] = [];
     if (blockedByVolume) blockers.push('成交额不足50亿');
     if (blockedByNewLow) blockers.push(`连续${consecutiveNewLows}日新低`);
-    if (!trendOk) blockers.push(`Z120=${fmtZ(z120s)} ≥ 0 大势不配合`);
+    if (!trendOk) blockers.push(`Z120=${fmtZ(z120s)} ≤ 0 大势不配合`);
 
     if (!blockedByVolume && !blockedByNewLow && trendOk) {
       if (z20.zScore <= BUY_STRONG) {

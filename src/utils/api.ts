@@ -842,24 +842,26 @@ function normalizeCode(code: string): { raw: string; market: '1' | '0' } {
  */
 async function fetchSinaDailyKline(code: string, count: number): Promise<KlineBar[]> {
   const { raw, market } = normalizeCode(code);
-  const prefix = market === '1' ? 'sh' : 'sz';
-  const symbol = `${prefix}${raw}`;
+  const secid = `${market}.${raw}`;
 
-  const url = `/api/sina-kline/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=240&ma=no&datalen=${count}`;
+  const url = `/api/benchmark/api/qt/stock/kline/get?secid=${secid}&klt=101&fqt=1&end=20500101&lmt=${count}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61`;
   const res = await fetch(url);
-  const json: Array<Record<string, string>> = await res.json();
+  const json = await res.json();
 
-  if (!Array.isArray(json)) return [];
+  if (!json?.data?.klines || !Array.isArray(json.data.klines)) return [];
 
-  return json
-    .map(item => ({
-      date: item.day || '',
-      open: parseFloat(item.open) || 0,
-      close: parseFloat(item.close) || 0,
-      high: parseFloat(item.high) || 0,
-      low: parseFloat(item.low) || 0,
-      volume: (parseFloat(item.volume) || 0) / 100, // 股 → 手
-    }))
+  return (json.data.klines as string[])
+    .map(line => {
+      const p = line.split(',');
+      return {
+        date: p[0] || '',
+        open: parseFloat(p[1]) || 0,
+        close: parseFloat(p[2]) || 0,
+        high: parseFloat(p[3]) || 0,
+        low: parseFloat(p[4]) || 0,
+        volume: parseFloat(p[5]) || 0, // 已是手
+      };
+    })
     .filter(p => p.date && p.close > 0)
     .sort((a, b) => a.date.localeCompare(b.date));
 }

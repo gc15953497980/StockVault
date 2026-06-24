@@ -6,8 +6,8 @@ import { generateSignal, type SignalResult } from '../utils/zscore';
 import styles from './ZScoreSignal.module.css';
 
 const CONCURRENCY = 1;
-const BATCH_DELAY = 500;
-const FETCH_TIMEOUT = 10000;
+const BATCH_DELAY = 2000;
+const FETCH_TIMEOUT = 15000;
 const CACHE_KEY = 'stockvault_zscore_v3';
 const CACHE_TTL = 4 * 3600_000;
 
@@ -48,7 +48,7 @@ async function fetchWithRetry(code: string): Promise<ReturnType<typeof fetchStoc
 
 export default function ZScoreSignal() {
   const items = useWatchlistStore(s => s.items);
-  const stocks = items.filter(i => i.type === 'stock');
+  const stocks = items.filter(i => i.type === 'stock' && i.market === 'a');
 
   const [signals, setSignals] = useState<Record<string, SignalResult>>(() => loadCache());
   const [computing, setComputing] = useState(false);
