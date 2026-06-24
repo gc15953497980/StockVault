@@ -183,6 +183,84 @@ export function calcAveragingDown(
   };
 }
 
+// ─── 补仓网格计算 ───
+
+export interface AvgDownGridLevel {
+  /** 第几次补仓 (1-indexed) */
+  level: number;
+  /** 触发价位 */
+  triggerPrice: number;
+  /** 相对于基准价的累计跌幅 (%) */
+  dropFromRef: number;
+  /** 是否已完成 */
+  completed: boolean;
+  /** 实际补仓价格（如已完成） */
+  actualPrice?: number;
+}
+
+/**
+ * 计算补仓网格
+ * @param referencePrice 基准价（初始持仓成本）
+ * @param dropPct 每格跌幅百分比，如 4
+ * @param completedPrices 已完成的补仓价格列表
+ * @param maxLevels 最多显示几格，默认 10
+ */
+export function calcAvgDownGrid(
+  referencePrice: number,
+  dropPct: number,
+  completedPrices: number[],
+  maxLevels: number = 10,
+): AvgDownGridLevel[] {
+  if (referencePrice <= 0 || dropPct <= 0) return [];
+
+  const sortedCompleted = [...completedPrices].sort((a, b) => b - a); // 降序
+  const factor = 1 - dropPct / 100;
+
+  const levels: AvgDownGridLevel[] = [];
+  for (let i = 1; i <= maxLevels; i++) {
+    const triggerPrice = referencePrice * Math.pow(factor, i);
+    if (triggerPrice <= 0.01) break;
+
+    const dropFromRef = ((referencePrice - triggerPrice) / referencePrice) * 100;
+
+    // 判断是否已完成：已补仓价格中是否有 ≤ triggerPrice 但 ≥ 下一格触发价的
+    const nextTrigger = referencePrice * Math.pow(factor, i + 1);
+    const matched = sortedCompleted.find(
+      p => p <= triggerPrice && p >= nextTrigger,
+    );
+
+    levels.push({
+      level: i,
+      triggerPrice: Math.round(triggerPrice * 100) / 100,
+      dropFromRef: Math.round(dropFromRef * 100) / 100,
+      completed: !!matched,
+      actualPrice: matched,
+    });
+  }
+
+  return levels;
+}
+
+/**
+ * 获取下一次补仓触发信息
+ * @returns 下次触发价位和距当前价的跌幅，若无则返回 null
+ */
+export function getNextAvgDownTrigger(
+  grid: AvgDownGridLevel[],
+  currentPrice: number,
+): { level: number; triggerPrice: number; dropFromCurrent: number } | null {
+  const next = grid.find(l => !l.completed);
+  if (!next) return null;
+  const dropFromCurrent = currentPrice > 0
+    ? ((currentPrice - next.triggerPrice) / currentPrice) * 100
+    : 0;
+  return {
+    level: next.level,
+    triggerPrice: next.triggerPrice,
+    dropFromCurrent: Math.round(dropFromCurrent * 100) / 100,
+  };
+}
+
 export function generateAvgDownCurve(
   currentCost: number,
   currentShares: number,

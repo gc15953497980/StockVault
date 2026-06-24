@@ -46,6 +46,7 @@ function loadFunds(): Fund[] {
       if (f.sector === undefined) f.sector = '';
       if (f.formation === undefined) f.formation = '';
       if (f.tags === undefined) f.tags = [];
+      if (f.avgDownPrices === undefined) f.avgDownPrices = [];
     }
     return funds;
   } catch {

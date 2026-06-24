@@ -52,6 +52,8 @@ export interface Fund {
   holdingCost: number;
   tags: string[];
   accountId?: string;
+  /** 补仓记录：每次实际补仓的净值列表（按时间升序） */
+  avgDownPrices?: number[];
 }
 
 export const SECTOR_OPTIONS = [

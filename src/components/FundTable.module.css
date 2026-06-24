@@ -193,6 +193,192 @@
   100% { background-position: -200% 0; }
 }
 
+/* AvgDown grid */
+.avgDownCell {
+  text-align: center;
+}
+
+.avgDownCompact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.avgDownCount {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.avgDownNext {
+  color: var(--down);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.avgDownHit {
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 11px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.avgDownNone {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.avgDownSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.avgDownHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.avgDownMeta {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.avgDownSep {
+  color: var(--border);
+}
+
+.avgDownGridRow {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.avgDownCard {
+  flex: 0 0 85px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.avgDownCard:hover {
+  border-color: var(--primary);
+}
+
+.avgDownDone {
+  background: rgba(28, 160, 81, 0.08);
+  border-color: rgba(28, 160, 81, 0.3);
+  cursor: pointer;
+}
+
+.avgDownDone:hover {
+  border-color: var(--down);
+  background: rgba(234, 67, 53, 0.06);
+}
+
+.avgDownPending {
+  border-color: var(--down);
+  box-shadow: 0 0 6px rgba(234, 67, 53, 0.2);
+}
+
+.avgDownCardLevel {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.avgDownCardPrice {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.avgDownCardDrop {
+  color: var(--down);
+  font-weight: 500;
+  font-size: 10px;
+}
+
+.avgDownCardStatus {
+  font-size: 14px;
+}
+
+.avgDownDoneIcon {
+  opacity: 0.8;
+}
+
+.avgDownNextIcon {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.avgDownWaitIcon {
+  opacity: 0.3;
+}
+
+.avgDownInput {
+  width: 100px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.avgDownInput:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btnDefault {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.btnDefault:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
 /* Mobile: sticky first column */
 @media (max-width: 768px) {
   .table th:first-child,

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFundStore } from '../store/useFundStore';
 import { calcFund, formatMoney, formatPercent } from '../utils/api';
+import { calcAvgDownGrid, getNextAvgDownTrigger } from '../utils/dca';
 import { FundTxPanel, FundDividendPanel } from './TxPanel';
 import AveragingDownCalc from './AveragingDownCalc';
 import NotesPanel from './NotesPanel';
@@ -30,6 +31,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [avgDownId, setAvgDownId] = useState<string | null>(null);
   const [showDivCompare, setShowDivCompare] = useState<string | null>(null);
+  const [recordForm, setRecordForm] = useState<{ fundId: string; price: string; amount: string } | null>(null);
 
   const filtered = useMemo(() =>
     filterTag ? funds.filter(f => f.tags.includes(filterTag)) : funds,
@@ -105,6 +107,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
               <th onClick={() => handleSort('marketValue')}>持有市值 {sortField === 'marketValue' && sortArrow}</th>
               <th onClick={() => handleSort('profitLoss')}>浮动盈亏 {sortField === 'profitLoss' && sortArrow}</th>
               <th onClick={() => handleSort('profitLossPercent')}>盈亏比例 {sortField === 'profitLossPercent' && sortArrow}</th>
+              <th>补仓</th>
               <th onClick={() => handleSort('time')}>更新时间 {sortField === 'time' && sortArrow}</th>
               <th>操作</th>
             </tr>
@@ -112,7 +115,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
           <tbody>
             {loading && funds.length === 0 && Array.from({ length: 5 }, (_, i) => (
               <tr key={`skel-${i}`} className={styles.skeletonRow}>
-                <td colSpan={14}>
+                <td colSpan={15}>
                   <div className={styles.skeletonLine} style={{ width: `${90 - i * 10}%` }} />
                 </td>
               </tr>
@@ -150,6 +153,24 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
                     <td>{formatMoney(calc.marketValue)}</td>
                     <td className={calc.profitLoss >= 0 ? styles.up : styles.down}>{formatMoney(calc.profitLoss)}</td>
                     <td className={calc.profitLossPercent >= 0 ? styles.up : styles.down}>{formatPercent(calc.profitLossPercent)}</td>
+                    <td className={styles.avgDownCell}>
+                      {fund.holdingCost > 0 ? (() => {
+                        const grid = calcAvgDownGrid(fund.holdingCost, 4, fund.avgDownPrices ?? [], 10);
+                        const next = getNextAvgDownTrigger(grid, nav);
+                        const count = fund.avgDownPrices?.length ?? 0;
+                        if (!next && count === 0) return <span className={styles.avgDownNone}>-</span>;
+                        return (
+                          <div className={styles.avgDownCompact}>
+                            {count > 0 && <span className={styles.avgDownCount}>已补{count}</span>}
+                            {next && (
+                              <span className={next.dropFromCurrent > 0 ? styles.avgDownNext : styles.avgDownHit}>
+                                {next.triggerPrice.toFixed(4)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })() : <span className={styles.avgDownNone}>-</span>}
+                    </td>
                     <td className={styles.time}>{timeStr}</td>
                     <td>
                       <button className={styles.btnEdit} onClick={() => onEdit(fund.id)}>编辑</button>
@@ -158,7 +179,7 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
                   </tr>
                   {expandedId === fund.id && (
                     <tr className={styles.detailRow}>
-                      <td colSpan={15}>
+                      <td colSpan={16}>
                         <div className={styles.detailPanel}>
                           <div className={styles.detailSection}>
                             <span className={styles.detailLabel}>持有金额:</span>
@@ -180,6 +201,127 @@ export default function FundTable({ onEdit, onDelete, hideNames, filterTag, load
                           </div>
                           <FundTxPanel fundId={fund.id} />
                           <FundDividendPanel fundId={fund.id} />
+                          {/* 补仓网格 */}
+                          {fund.holdingCost > 0 && (() => {
+                            const grid = calcAvgDownGrid(fund.holdingCost, 4, fund.avgDownPrices ?? [], 8);
+                            const next = getNextAvgDownTrigger(grid, nav);
+                            if (grid.length === 0) return null;
+                            return (
+                              <div className={styles.avgDownSection}>
+                                <div className={styles.avgDownHeader}>
+                                  <span>📊 补仓网格（每跌4%）</span>
+                                  <span className={styles.avgDownMeta}>
+                                    基准净值 {fund.holdingCost.toFixed(4)}
+                                    <span className={styles.avgDownSep}>|</span>
+                                    已补 {fund.avgDownPrices?.length ?? 0} 次
+                                    {next && (
+                                      <>
+                                        <span className={styles.avgDownSep}>|</span>
+                                        下次触发{' '}
+                                        <span className={next.dropFromCurrent > 0 ? styles.down : styles.avgDownHit}>
+                                          {next.triggerPrice.toFixed(4)}
+                                        </span>
+                                        {next.dropFromCurrent > 0 && (
+                                          <span className={styles.down}>（距现净值 -{next.dropFromCurrent.toFixed(1)}%）</span>
+                                        )}
+                                        {next.dropFromCurrent <= 0 && (
+                                          <span className={styles.avgDownHit}>（已触发！）</span>
+                                        )}
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                                <div className={styles.avgDownGridRow}>
+                                  {grid.map(l => (
+                                    <div
+                                      key={l.level}
+                                      className={`${styles.avgDownCard} ${l.completed ? styles.avgDownDone : (l === grid.find(g => !g.completed) ? styles.avgDownPending : '')}`}
+                                      title={l.completed ? `点击删除此补仓记录（实际补仓净值：${l.actualPrice?.toFixed(4)}）` : undefined}
+                                      onClick={l.completed ? () => {
+                                        const { updateFund } = useFundStore.getState();
+                                        const prices = [...(fund.avgDownPrices ?? [])];
+                                        // 找到匹配的已补价格并移除（从大到小找第一个匹配的）
+                                        const idx = prices.findLastIndex(p => p <= l.triggerPrice && p >= (fund.holdingCost * Math.pow(0.96, l.level + 1)));
+                                        if (idx !== -1) {
+                                          prices.splice(idx, 1);
+                                          updateFund({ ...fund, avgDownPrices: prices });
+                                        }
+                                      } : undefined}
+                                    >
+                                      <div className={styles.avgDownCardLevel}>第{l.level}次</div>
+                                      <div className={styles.avgDownCardPrice}>{l.triggerPrice.toFixed(4)}</div>
+                                      <div className={styles.avgDownCardDrop}>-{l.dropFromRef.toFixed(1)}%</div>
+                                      <div className={styles.avgDownCardStatus}>
+                                        {l.completed ? (
+                                          <span className={styles.avgDownDoneIcon}>✅</span>
+                                        ) : l === grid.find(g => !g.completed) ? (
+                                          <span className={styles.avgDownNextIcon}>🔴</span>
+                                        ) : (
+                                          <span className={styles.avgDownWaitIcon}>⬜</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className={styles.detailSection}>
+                                  {recordForm?.fundId === fund.id ? (
+                                    <>
+                                      <input
+                                        type="number"
+                                        step="0.0001"
+                                        className={styles.avgDownInput}
+                                        placeholder="补仓净值"
+                                        value={recordForm.price}
+                                        onChange={e => setRecordForm({ ...recordForm, price: e.target.value })}
+                                      />
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        className={styles.avgDownInput}
+                                        placeholder="补仓金额"
+                                        value={recordForm.amount}
+                                        onChange={e => setRecordForm({ ...recordForm, amount: e.target.value })}
+                                      />
+                                      <button
+                                        className={styles.btnEdit}
+                                        onClick={() => {
+                                          const p = parseFloat(recordForm.price);
+                                          const a = parseFloat(recordForm.amount);
+                                          if (!p || !a || p <= 0 || a <= 0) return;
+                                          const { updateFund } = useFundStore.getState();
+                                          const oldShares = fund.holdingAmount / fund.holdingCost;
+                                          const newShares = a / p;
+                                          const totalShares = oldShares + newShares;
+                                          const totalAmount = fund.holdingAmount + a;
+                                          updateFund({
+                                            ...fund,
+                                            holdingAmount: Math.round(totalAmount * 100) / 100,
+                                            holdingCost: Math.round((totalAmount / totalShares) * 10000) / 10000,
+                                            avgDownPrices: [...(fund.avgDownPrices ?? []), p],
+                                          });
+                                          setRecordForm(null);
+                                        }}
+                                      >
+                                        保存补仓
+                                      </button>
+                                      <button className={styles.btnDefault} onClick={() => setRecordForm(null)}>取消</button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      className={styles.btnDefault}
+                                      onClick={() => setRecordForm({
+                                        fundId: fund.id,
+                                        price: (next?.triggerPrice ?? nav).toFixed(4),
+                                        amount: '',
+                                      })}
+                                    >
+                                      记录补仓
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <div className={styles.detailSection}>
                             <button className={styles.btnDefault} onClick={() => setAvgDownId(avgDownId === fund.id ? null : fund.id)}>
                               补仓计算器
