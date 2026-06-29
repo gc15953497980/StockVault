@@ -3,11 +3,10 @@ import type { FundNavPoint } from '../types';
 // ─── Constants (matching avg.py / backtest_compare.py) ───
 
 const LOOKBACK_MONTHS = 6;
-const ADD_POSITION_STD_MULT = 1.3;
-const REDUCE_POSITION_MULT = 2.0;
+export const SIGNAL_LEVELS = [2.0, 2.5, 3.0];
 const DATA_YEARS = 2;
 const MULT_DROP = 2.0;
-const MULT_STD = 1.3;
+const MULT_STD = 2.0;
 const DEFAULT_HOLD_DAYS = [5, 10, 20];
 
 // ─── Analysis Result Types ───
@@ -20,16 +19,16 @@ export interface PositionSignalResult {
   avgRise: number;
   /** 近6月标准差(%) */
   stdDev: number;
-  /** 加仓阈值(%) */
+  /** 加仓阈值(%) — 2σ基准 */
   addThreshold: number;
-  /** 减仓阈值(%) */
+  /** 减仓阈值(%) — 2σ基准 */
   reduceThreshold: number;
   /** 最新涨跌幅(%) */
   latestPct: number;
-  /** 加仓提醒 */
-  addSignal: boolean;
-  /** 减仓提醒 */
-  reduceSignal: boolean;
+  /** 加仓信号档位 0=无, 1=2σ, 2=2.5σ, 3=3σ */
+  addLevel: number;
+  /** 减仓信号档位 0=无, 1=2σ, 2=2.5σ, 3=3σ */
+  reduceLevel: number;
   /** 统计起始日期 */
   statStart: string;
   /** 统计结束日期 */
@@ -81,7 +80,7 @@ export function analyzePositionSignal(
     name: name || '',
     avgDrop: 0, avgRise: 0, stdDev: 0,
     addThreshold: 0, reduceThreshold: 0,
-    latestPct: 0, addSignal: false, reduceSignal: false,
+    latestPct: 0, addLevel: 0, reduceLevel: 0,
     statStart: '', statEnd: '', dataPoints: navPoints.length,
   };
 
@@ -117,11 +116,28 @@ export function analyzePositionSignal(
   const variance = rates.reduce((s, r) => s + (r - mean) ** 2, 0) / rates.length;
   const stdDev = Math.sqrt(variance);
 
-  const addThreshold = -ADD_POSITION_STD_MULT * stdDev;
-  const reduceThreshold = REDUCE_POSITION_MULT * avgRise;
+  const addThreshold = -SIGNAL_LEVELS[0] * stdDev;
+  const reduceThreshold = SIGNAL_LEVELS[0] * stdDev;
 
-  const addSignal = downRates.length > 0 && latestPct < 0 && latestPct <= addThreshold;
-  const reduceSignal = upRates.length > 0 && latestPct > 0 && latestPct >= reduceThreshold;
+  // Determine highest triggered level (check strongest first)
+  let addLevel = 0;
+  if (latestPct < 0) {
+    for (let i = SIGNAL_LEVELS.length - 1; i >= 0; i--) {
+      if (latestPct <= -SIGNAL_LEVELS[i] * stdDev) {
+        addLevel = i + 1;
+        break;
+      }
+    }
+  }
+  let reduceLevel = 0;
+  if (latestPct > 0) {
+    for (let i = SIGNAL_LEVELS.length - 1; i >= 0; i--) {
+      if (latestPct >= SIGNAL_LEVELS[i] * stdDev) {
+        reduceLevel = i + 1;
+        break;
+      }
+    }
+  }
 
   return {
     name: name || '',
@@ -131,8 +147,8 @@ export function analyzePositionSignal(
     addThreshold: round2(addThreshold),
     reduceThreshold: round2(reduceThreshold),
     latestPct: round2(latestPct),
-    addSignal,
-    reduceSignal,
+    addLevel,
+    reduceLevel,
     statStart,
     statEnd,
     dataPoints: window.length,
@@ -255,7 +271,7 @@ function buildBacktestRow(returns: number[], wins: number): BacktestRow {
 
 // ─── Currency / Redemption Fee ───
 
-export const STRATEGY_LABELS = { drop: '均值跌幅 ×2.0', std: '标准差 ×1.3' } as const;
+export const STRATEGY_LABELS = { drop: '均值跌幅 ×2.0', std: '标准差 ×2.0' } as const;
 
 export function getHoldLabel(days: number): string {
   if (days >= 365) return `${days / 365}年`;

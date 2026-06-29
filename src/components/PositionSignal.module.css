@@ -24,9 +24,19 @@
 }
 .cardLabel { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
 .cardValue { font-size: 18px; font-weight: 700; color: var(--text); }
+.cardBreakdown { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
 .signalAdd { color: var(--up); }
 .signalReduce { color: var(--down); }
+
+/* 三档加仓信号（红色递进） */
+.sigAdd1 { color: #e88; font-weight: 500; }
+.sigAdd2 { color: #e44; font-weight: 600; }
+.sigAdd3 { color: #c00; font-weight: 700; }
+/* 三档减仓信号（绿色递进） */
+.sigRed1 { color: #8c8; font-weight: 500; }
+.sigRed2 { color: #4a4; font-weight: 600; }
+.sigRed3 { color: #080; font-weight: 700; }
 
 /* ── Table ── */
 .tableBox {

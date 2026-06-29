@@ -3,6 +3,7 @@ import type { Fund, FundWithPrice } from '../types';
 import { fetchFundPrices, fetchFundHistoryNAV, calcAvgDownside } from '../utils/api';
 import { autoSyncPush } from '../utils/gistSync';
 import { useAccountStore } from './useAccountStore';
+import { ls } from '../utils/storage';
 
 interface FundStore {
   funds: Fund[];
@@ -55,9 +56,7 @@ function loadFunds(): Fund[] {
 }
 
 function saveFunds(funds: Fund[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(funds));
-  } catch { /* quota exceeded, ignore */ }
+  ls.set(STORAGE_KEY, funds);
 }
 
 export const useFundStore = create<FundStore>((set, get) => {

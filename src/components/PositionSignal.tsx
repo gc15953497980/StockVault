@@ -9,6 +9,7 @@ import {
   getHoldLabel,
   getZeroFeeDays,
   STRATEGY_LABELS,
+  SIGNAL_LEVELS,
   type PositionSignalResult,
   type BacktestResult,
 } from '../utils/positionSignal';
@@ -74,7 +75,7 @@ export default function PositionSignal() {
       const emptyResult: PositionSignalResult = {
         name: e.name, avgDrop: 0, avgRise: 0, stdDev: 0,
         addThreshold: 0, reduceThreshold: 0, latestPct: 0,
-        addSignal: false, reduceSignal: false,
+        addLevel: 0, reduceLevel: 0,
         statStart: '', statEnd: '', dataPoints: 0,
       };
 
@@ -166,12 +167,14 @@ export default function PositionSignal() {
     return sortDir === 'asc' ? styles.sortAsc : styles.sortDesc;
   };
 
-  let addCount = 0;
-  let reduceCount = 0;
+  let addCounts = [0, 0, 0, 0]; // index 0 unused, 1=2σ, 2=2.5σ, 3=3σ
+  let reduceCounts = [0, 0, 0, 0];
   items.forEach(r => {
-    if (r.result.addSignal) addCount++;
-    if (r.result.reduceSignal) reduceCount++;
+    if (r.result.addLevel > 0) addCounts[r.result.addLevel]++;
+    if (r.result.reduceLevel > 0) reduceCounts[r.result.reduceLevel]++;
   });
+  const addTotal = addCounts[1] + addCounts[2] + addCounts[3];
+  const reduceTotal = reduceCounts[1] + reduceCounts[2] + reduceCounts[3];
 
   const totalCount = funds.length + aStocks.length;
 
@@ -208,11 +211,13 @@ export default function PositionSignal() {
           </div>
           <div className={styles.card}>
             <div className={styles.cardLabel}>加仓信号</div>
-            <div className={`${styles.cardValue} ${styles.signalAdd}`}>{addCount}</div>
+            <div className={`${styles.cardValue} ${styles.signalReduce}`}>{addTotal || '-'}</div>
+            <div className={styles.cardBreakdown}>2σ:{addCounts[1]} 2.5σ:{addCounts[2]} 3σ:{addCounts[3]}</div>
           </div>
           <div className={styles.card}>
             <div className={styles.cardLabel}>减仓信号</div>
-            <div className={`${styles.cardValue} ${styles.signalReduce}`}>{reduceCount}</div>
+            <div className={`${styles.cardValue} ${styles.signalAdd}`}>{reduceTotal || '-'}</div>
+            <div className={styles.cardBreakdown}>2σ:{reduceCounts[1]} 2.5σ:{reduceCounts[2]} 3σ:{reduceCounts[3]}</div>
           </div>
         </div>
       )}
@@ -254,9 +259,9 @@ export default function PositionSignal() {
                       <td>{r.reduceThreshold > 0 ? `${r.reduceThreshold}%` : '-'}</td>
                       <td style={{fontSize: 11}}>{r.redemptionFee || (kind === '基金' ? '获取中...' : '-')}</td>
                       <td>
-                        {r.addSignal && <span className={styles.signalAdd}>★ 加仓</span>}
-                        {r.reduceSignal && <span className={styles.signalReduce}>★ 减仓</span>}
-                        {!r.addSignal && !r.reduceSignal && (r.error ? <span style={{color:'var(--text-muted)'}}>{r.error}</span> : '-')}
+                        {r.addLevel > 0 && <span className={styles[`sigAdd${r.addLevel}`]}>加仓 σ×{SIGNAL_LEVELS[r.addLevel - 1]}</span>}
+                        {r.reduceLevel > 0 && <span className={styles[`sigRed${r.reduceLevel}`]}>减仓 σ×{SIGNAL_LEVELS[r.reduceLevel - 1]}</span>}
+                        {r.addLevel === 0 && r.reduceLevel === 0 && (r.error ? <span style={{color:'var(--text-muted)'}}>{r.error}</span> : '-')}
                       </td>
                     </tr>
                     {expanded === key && (

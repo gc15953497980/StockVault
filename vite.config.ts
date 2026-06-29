@@ -44,6 +44,31 @@ export default defineConfig({
   server: {
     port: 4396,
     proxy: {
+      // Specific /api/sina-* rules must come BEFORE generic /api/sina
+      '/api/sina-stocklist': {
+        target: 'https://vip.stock.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-stocklist/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn/',
+        },
+      },
+      '/api/sina-stocklist2': {
+        target: 'https://money.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-stocklist2/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn/',
+        },
+      },
+      '/api/sina-kline': {
+        target: 'https://money.finance.sina.com.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sina-kline/, ''),
+        headers: {
+          Referer: 'https://finance.sina.com.cn',
+        },
+      },
       '/api/sina': {
         target: 'https://hq.sinajs.cn',
         changeOrigin: true,
@@ -76,31 +101,6 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/fundf10/, ''),
         headers: {
           Referer: 'https://fundf10.eastmoney.com/',
-        },
-      },
-
-      '/api/sina-stocklist': {
-        target: 'https://vip.stock.finance.sina.com.cn',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sina-stocklist/, ''),
-        headers: {
-          Referer: 'https://finance.sina.com.cn/',
-        },
-      },
-      '/api/sina-stocklist2': {
-        target: 'https://money.finance.sina.com.cn',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sina-stocklist2/, ''),
-        headers: {
-          Referer: 'https://finance.sina.com.cn/',
-        },
-      },
-      '/api/sina-kline': {
-        target: 'https://money.finance.sina.com.cn',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sina-kline/, ''),
-        headers: {
-          Referer: 'https://finance.sina.com.cn',
         },
       },
       '/api/gemini': {

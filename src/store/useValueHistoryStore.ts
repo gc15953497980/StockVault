@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useStockStore } from './useStockStore';
 import { useFundStore } from './useFundStore';
 import { useAccountStore } from './useAccountStore';
+import { ls } from '../utils/storage';
 
 interface HistoryPoint {
   time: number;
@@ -35,9 +36,7 @@ function loadHistory(): HistoryPoint[] {
 }
 
 function saveHistory(history: HistoryPoint[]) {
-  try {
-    localStorage.setItem(getKey(), JSON.stringify(history));
-  } catch { /* quota exceeded, ignore */ }
+  ls.set(getKey(), history);
 }
 
 export const useValueHistoryStore = create<ValueHistoryStore>((set, get) => {

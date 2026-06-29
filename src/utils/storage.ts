@@ -167,10 +167,43 @@ function lsGet<T = unknown>(key: string): T | null {
   }
 }
 
+/** Cache prefix patterns that can be safely evicted when quota is full */
+const EVICTABLE_PREFIXES = [
+  'stockvault_kline_v2_',
+  'stockvault_etfnav_',
+  'stockvault_fundnav_',
+  'stockvault_benchmark_',
+  'stockvault_goldkline_',
+  'stockvault_zscore_v4',
+  'stockvault_feerate_',
+];
+
+function evictCaches(): number {
+  let removed = 0;
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && EVICTABLE_PREFIXES.some(p => k.startsWith(p))) {
+      toRemove.push(k);
+    }
+  }
+  for (const k of toRemove) {
+    try { localStorage.removeItem(k); removed++; } catch { /* ignore */ }
+  }
+  return removed;
+}
+
 function lsSet<T = unknown>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch { /* quota exceeded */ }
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      const removed = evictCaches();
+      if (removed > 0) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* still fails */ }
+      }
+    }
+  }
 }
 
 function lsRemove(key: string): void {

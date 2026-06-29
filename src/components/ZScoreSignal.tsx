@@ -6,9 +6,9 @@ import { generateSignal, type SignalResult } from '../utils/zscore';
 import styles from './ZScoreSignal.module.css';
 
 const CONCURRENCY = 1;
-const BATCH_DELAY = 2000;
-const FETCH_TIMEOUT = 15000;
-const CACHE_KEY = 'stockvault_zscore_v3';
+const BATCH_DELAY = 500;
+const FETCH_TIMEOUT = 10000;
+const CACHE_KEY = 'stockvault_zscore_v4';
 const CACHE_TTL = 4 * 3600_000;
 
 interface CachedSignals {
@@ -38,7 +38,14 @@ async function fetchWithRetry(code: string): Promise<ReturnType<typeof fetchStoc
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), FETCH_TIMEOUT)
       );
-      return await Promise.race([fetchStockKline(code, 'day', 200), timeout]);
+      const bars = await Promise.race([fetchStockKline(code, 'day', 200), timeout]);
+      if (bars.length > 0) return bars;
+      if (attempt === 0) {
+        console.warn(`[fetchWithRetry] ${code} returned empty, retrying...`);
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+      return bars;
     } catch {
       if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
     }
@@ -46,22 +53,27 @@ async function fetchWithRetry(code: string): Promise<ReturnType<typeof fetchStoc
   throw new Error('fetch failed after retry');
 }
 
+function isDelistingRisk(name: string): boolean {
+  return name.includes('ST') || name.includes('退');
+}
+
 export default function ZScoreSignal() {
   const items = useWatchlistStore(s => s.items);
-  const stocks = items.filter(i => i.type === 'stock' && i.market === 'a');
+  const stocks = items.filter(i => i.type === 'stock' && i.market === 'a' && !isDelistingRisk(i.name));
 
   const [signals, setSignals] = useState<Record<string, SignalResult>>(() => loadCache());
   const [computing, setComputing] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [signalOnly, setSignalOnly] = useState(false);
+  const [ma5Only, setMa5Only] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState('');
-  const [computeLimit, setComputeLimit] = useState<number>(20);
+  const [computeLimit, setComputeLimit] = useState<number>(-1);
 
   const filtered = filterText.trim()
     ? stocks.filter(s => s.code.includes(filterText.trim()) || s.name.includes(filterText.trim()))
     : stocks;
-  const computeTargets = computeLimit > 0 ? filtered.slice(0, computeLimit) : filtered;
+  const computeTargets = computeLimit > 0 ? filtered.slice(0, computeLimit) : computeLimit === 0 ? filtered : [];
 
   const handleCompute = useCallback(async () => {
     if (computeTargets.length === 0) return;
@@ -121,21 +133,28 @@ export default function ZScoreSignal() {
     return a[1].zScore20 - b[1].zScore20;
   });
 
-  const visible = signalOnly ? entries.filter(([, s]) => s.direction !== 'none') : entries;
+  const visible = (() => {
+    let v = entries;
+    // 只算一只时不应用过滤，确保结果始终可见
+    if (entries.length === 1) return v;
+    if (signalOnly) v = v.filter(([, s]) => s.direction !== 'none');
+    if (ma5Only) v = v.filter(([, s]) => !s.blockedByMA5);
+    return v;
+  })();
   const signalCount = entries.filter(([, s]) => s.direction !== 'none').length;
   const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
     <div>
       <div className={styles.toolbar}>
-        <button className={styles.btn} onClick={handleCompute} disabled={computing}>
+        <button className={styles.btn} onClick={handleCompute} disabled={computing || computeLimit === -1}>
           {computing ? '计算中...' : '计算信号'}
         </button>
         {computing && (
           <button className={styles.btnCancel} onClick={() => setComputing(false)}>取消</button>
         )}
         <span className={styles.count}>
-          共 {stocks.length} 只 · 计算 {computeTargets.length} 只 · 已算 {entries.length} 只{signalCount > 0 ? ` · ${signalCount} 个信号` : ''}
+          {computeLimit === -1 ? '请选择计算范围' : `共 ${stocks.length} 只 · 计算 ${computeTargets.length} 只`} · 已算 {entries.length} 只{signalCount > 0 ? ` · ${signalCount} 个信号` : ''}
         </span>
       </div>
 
@@ -163,14 +182,15 @@ export default function ZScoreSignal() {
           {[20, 50, 100, 0].map(n => (
             <button
               key={n}
-              className={`${styles.limitBtn} ${(n === 0 ? computeLimit === 0 : computeLimit === n) ? styles.limitBtnActive : ''}`}
+              className={`${styles.limitBtn} ${computeLimit === n ? styles.limitBtnActive : ''}`}
               onClick={() => setComputeLimit(n)}
             >
               {n === 0 ? '全部' : `前${n}`}
             </button>
           ))}
           <span className={styles.hint}>
-            {filterText ? `匹配 ${filtered.length} 只，` : ''}计算前 {computeLimit > 0 ? Math.min(computeLimit, filtered.length) : filtered.length} 只
+            {filterText ? `匹配 ${filtered.length} 只，` : ''}
+            {computeLimit === -1 ? '请选择计算范围' : `计算前 ${computeLimit > 0 ? Math.min(computeLimit, filtered.length) : filtered.length} 只`}
           </span>
         </div>
       )}
@@ -184,6 +204,14 @@ export default function ZScoreSignal() {
               onChange={e => setSignalOnly(e.target.checked)}
             />
             仅看有信号
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={ma5Only}
+              onChange={e => setMa5Only(e.target.checked)}
+            />
+            仅看5日线上
           </label>
           <span className={styles.count}>
             显示 {visible.length}/{entries.length} 只
@@ -204,6 +232,7 @@ export default function ZScoreSignal() {
               <th>代码</th>
               <th>名称</th>
               <th>最新价</th>
+              <th>5日线</th>
               <th>Z20</th>
               <th>Z120</th>
               <th>方向</th>
@@ -226,6 +255,9 @@ export default function ZScoreSignal() {
                   <td>{code}</td>
                   <td>{name}</td>
                   <td>{s.latestClose.toFixed(2)}</td>
+                  <td className={s.blockedByMA5 ? styles.sell : styles.buy}>
+                    {s.ma5 > 0 ? s.ma5.toFixed(2) : '-'}
+                  </td>
                   <td className={z20Cls}>
                     {(s.zScore20 >= 0 ? '+' : '') + s.zScore20.toFixed(2)}
                   </td>

@@ -480,11 +480,11 @@ export async function fetchFundHistoryNAV(
     if (cached) {
       const merged = mergeNavData(cached.data, result);
       log.debug(`[fetchFundHistoryNAV] merged with cache, total ${merged.length} points`);
-      setCachedHistory(code, merged, reqStartDate, reqEndDate);
+      try { setCachedHistory(code, merged, reqStartDate, reqEndDate); } catch { /* quota */ }
       return merged.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
     }
 
-    setCachedHistory(code, result, reqStartDate, reqEndDate);
+    try { setCachedHistory(code, result, reqStartDate, reqEndDate); } catch { /* quota */ }
     return result.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
   } catch (err) {
     log.error(`[fetchFundHistoryNAV] fetch failed`, err);
@@ -541,8 +541,7 @@ export async function fetchBenchmarkData(code: string): Promise<BenchmarkPoint[]
   const cached = getBenchmarkCache(code);
   if (cached) return cached;
 
-  // Determine market: 1=SH, 0=SZ
-  const secid = code.startsWith('6') || code.startsWith('5') ? `1.${code}` : `0.${code}`;
+  const secid = toEastMoneySecid(code);
   try {
     const res = await fetch(`/api/benchmark/kline?secid=${secid}&lmt=200`);
     const json = await res.json();
@@ -553,7 +552,7 @@ export async function fetchBenchmarkData(code: string): Promise<BenchmarkPoint[]
           return { date: parts[0], value: parseFloat(parts[2]) };
         })
         .filter((p: BenchmarkPoint) => p.value > 0);
-      if (result.length > 0) setBenchmarkCache(code, result);
+      if (result.length > 0) try { setBenchmarkCache(code, result); } catch { /* quota */ }
       return result;
     }
     return [];
@@ -595,7 +594,7 @@ function setCachedKline(code: string, data: FundNavPoint[], startDate: string, e
 }
 
 /**
- * Fetch stock/ETF daily kline and convert to FundNavPoint-compatible format.
+ * Fetch stock/ETF daily kline from Sina and convert to FundNavPoint-compatible format.
  * Computes daily change % from consecutive close prices.
  */
 export async function fetchETFNavHistory(
@@ -616,35 +615,31 @@ export async function fetchETFNavHistory(
     }
   }
 
-  const secid = code.startsWith('6') || code.startsWith('5') ? `1.${code}` : `0.${code}`;
   try {
-    const res = await fetch(`/api/benchmark/kline?secid=${secid}&lmt=300`);
-    const json = await res.json();
-    if (!json?.data?.klines) return [];
+    // Use Sina K-line, same source as candlestick charts (fetchStockKline)
+    // Request enough bars to cover the lookback: ~22 trading days per month
+    const bars = await fetchSinaDailyKline(code, Math.max(monthsBack * 30, 100));
 
-    const prices: { date: string; close: number }[] = json.data.klines
-      .map((line: string) => {
-        const parts = line.split(',');
-        return { date: parts[0], close: parseFloat(parts[2]) };
-      })
-      .filter((p: { close: number }) => p.close > 0)
-      .sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+    if (bars.length < 2) return [];
 
     const result: FundNavPoint[] = [];
-    for (let i = 0; i < prices.length; i++) {
-      const growthRate = i > 0 && prices[i-1].close > 0
-        ? ((prices[i].close - prices[i-1].close) / prices[i-1].close) * 100
+    for (let i = 1; i < bars.length; i++) {
+      const growthRate = bars[i - 1].close > 0
+        ? ((bars[i].close - bars[i - 1].close) / bars[i - 1].close) * 100
         : 0;
-      result.push({ date: prices[i].date, nav: prices[i].close, growthRate: Math.round(growthRate * 100) / 100 });
+      result.push({
+        date: bars[i].date,
+        nav: bars[i].close,
+        growthRate: Math.round(growthRate * 100) / 100,
+      });
     }
 
-    // Drop the first day (no prior close to compute change)
-    const usable = result.slice(1);
-    if (usable.length > 0) {
-      setCachedKline(code, usable, reqStartDate, reqEndDate);
+    if (result.length > 0) {
+      try { setCachedKline(code, result, reqStartDate, reqEndDate); } catch { /* quota exceeded */ }
     }
-    return usable.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
-  } catch {
+    return result.filter(p => p.date >= reqStartDate && p.date <= reqEndDate);
+  } catch (err) {
+    log.warn(`[fetchETFNavHistory] error for ${code}`, err);
     return [];
   }
 }
@@ -836,34 +831,63 @@ function normalizeCode(code: string): { raw: string; market: '1' | '0' } {
   return { raw, market };
 }
 
+function toEastMoneySecid(code: string): string {
+  const { raw, market } = normalizeCode(code);
+  return `${market}.${raw}`;
+}
+
 /**
  * Fetch stock/ETF daily K-line from Sina.
  * Volume is returned in 手 (Sina gives 股, we convert).
  */
 async function fetchSinaDailyKline(code: string, count: number): Promise<KlineBar[]> {
   const { raw, market } = normalizeCode(code);
-  const secid = `${market}.${raw}`;
+  const url = `/api/sina-kline/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=240&ma=no&datalen=${count}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      log.warn(`[fetchSinaDailyKline] HTTP ${res.status} for ${symbol}`);
+      return [];
+    }
+    // Read as buffer first so we can try both UTF-8 and GBK
+    const buffer = await res.arrayBuffer();
+    if (buffer.byteLength < 10) {
+      log.warn(`[fetchSinaDailyKline] empty/short response for ${symbol}: ${buffer.byteLength} bytes`);
+      return [];
+    }
+    const text = new TextDecoder('utf-8').decode(buffer);
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // Sina may return GBK-encoded JSON
+      const gbkText = new TextDecoder('gbk').decode(buffer);
+      json = JSON.parse(gbkText);
+    }
 
-  const url = `/api/benchmark/api/qt/stock/kline/get?secid=${secid}&klt=101&fqt=1&end=20500101&lmt=${count}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61`;
-  const res = await fetch(url);
-  const json = await res.json();
+    if (!Array.isArray(json)) {
+      log.warn(`[fetchSinaDailyKline] non-array response for ${symbol}: ${typeof json}, first 100 chars: ${text.slice(0, 100)}`);
+      return [];
+    }
 
-  if (!json?.data?.klines || !Array.isArray(json.data.klines)) return [];
+    const bars = (json as Array<Record<string, string>>)
+      .map(item => ({
+        date: item.day || '',
+        open: parseFloat(item.open) || 0,
+        close: parseFloat(item.close) || 0,
+        high: parseFloat(item.high) || 0,
+        low: parseFloat(item.low) || 0,
+        volume: (parseFloat(item.volume) || 0) / 100, // 股 → 手
+      }))
+      .filter(p => p.date && p.close > 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-  return (json.data.klines as string[])
-    .map(line => {
-      const p = line.split(',');
-      return {
-        date: p[0] || '',
-        open: parseFloat(p[1]) || 0,
-        close: parseFloat(p[2]) || 0,
-        high: parseFloat(p[3]) || 0,
-        low: parseFloat(p[4]) || 0,
-        volume: parseFloat(p[5]) || 0, // 已是手
-      };
-    })
-    .filter(p => p.date && p.close > 0)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    log.info(`[fetchSinaDailyKline] ${symbol}: ${bars.length} bars (${bars[0]?.date} ~ ${bars[bars.length - 1]?.date})`);
+    return bars;
+  } catch (err) {
+    log.error(`[fetchSinaDailyKline] fetch error for ${symbol}:`, err);
+    return [];
+  }
 }
 
 function aggregateBars(daily: KlineBar[], period: 'week' | 'month'): KlineBar[] {
@@ -924,10 +948,11 @@ export async function fetchStockKline(
     }
 
     if (result.length > 0) {
-      setCachedStockKline(code, period, result);
+      try { setCachedStockKline(code, period, result); } catch { /* quota exceeded, ignore */ }
     }
     return result;
-  } catch {
+  } catch (err) {
+    log.warn(`[fetchStockKline] error for ${code}, using cache fallback`, err);
     return cached?.data ?? [];
   }
 }

@@ -4,6 +4,7 @@ import { fetchStockPrices, fetchForeignPrices } from '../utils/api';
 import type { Market } from '../types';
 import { autoSyncPush } from '../utils/gistSync';
 import { useAccountStore } from './useAccountStore';
+import { ls } from '../utils/storage';
 
 interface StockStore {
   stocks: Stock[];
@@ -75,7 +76,7 @@ function loadStocks(): Stock[] {
 }
 
 function saveStocks(stocks: Stock[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stocks));
+  ls.set(STORAGE_KEY, stocks);
 }
 
 export const useStockStore = create<StockStore>((set, get) => {
