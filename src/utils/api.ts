@@ -543,7 +543,7 @@ export async function fetchBenchmarkData(code: string): Promise<BenchmarkPoint[]
 
   const secid = toEastMoneySecid(code);
   try {
-    const res = await fetch(`/api/benchmark/kline?secid=${secid}&lmt=200`);
+    const res = await fetch(`/api/benchmark/api/qt/stock/kline/get?secid=${secid}&lmt=200`);
     const json = await res.json();
     if (json?.data?.klines) {
       const result: BenchmarkPoint[] = json.data.klines

@@ -132,7 +132,7 @@ export async function fetchGoldKline(limit = 200): Promise<GoldKlinePoint[]> {
   if (cached) return cached;
 
   try {
-    const url = `/api/gold/kline?secid=${GOLD_SECID}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=${limit}`;
+    const url = `/api/gold/api/qt/stock/kline/get?secid=${GOLD_SECID}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=${limit}`;
     log.debug(`[fetchGoldKline] requesting ${url}`);
 
     const res = await fetch(url);
