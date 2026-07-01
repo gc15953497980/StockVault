@@ -2,16 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import https from 'node:https'
 
-// Custom middleware for /api/benchmark — creates a fresh HTTPS connection per
-// request to avoid socket hang-up caused by http-proxy connection reuse.
-function benchmarkMiddleware() {
+// Custom middleware for /api/benchmark and /api/gold — creates a fresh HTTPS
+// connection per request to avoid socket hang-up caused by http-proxy connection reuse.
+function customProxyMiddleware(apiPath: string, hostname: string) {
   return {
-    name: 'benchmark-proxy',
+    name: `${apiPath}-proxy`,
     configureServer(server: import('vite').ViteDevServer) {
-      server.middlewares.use('/api/benchmark', (req, res) => {
-        const path = (req.url ?? '').replace(/^\/api\/benchmark/, '') || '/'
+      server.middlewares.use(apiPath, (req, res) => {
+        const path = (req.url ?? '').replace(new RegExp(`^${apiPath}`), '') || '/'
         const options = {
-          hostname: 'push2his.eastmoney.com',
+          hostname,
           port: 443,
           path,
           method: req.method ?? 'GET',
@@ -39,8 +39,16 @@ function benchmarkMiddleware() {
   }
 }
 
+function benchmarkMiddleware() {
+  return customProxyMiddleware('/api/benchmark', 'push2his.eastmoney.com')
+}
+
+function goldMiddleware() {
+  return customProxyMiddleware('/api/gold', 'push2his.eastmoney.com')
+}
+
 export default defineConfig({
-  plugins: [react(), benchmarkMiddleware()],
+  plugins: [react(), benchmarkMiddleware(), goldMiddleware()],
   server: {
     port: 4396,
     proxy: {
@@ -84,16 +92,6 @@ export default defineConfig({
         headers: {
           Referer: 'https://fundf10.eastmoney.com/',
         },
-      },
-      '/api/gold': {
-        target: 'https://push2his.eastmoney.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/gold/, ''),
-        headers: {
-          Referer: 'https://www.eastmoney.com/',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        },
-        agent: false,
       },
       '/api/fundf10': {
         target: 'https://fundf10.eastmoney.com',
