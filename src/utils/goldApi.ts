@@ -123,44 +123,61 @@ export async function fetchUsdCny(): Promise<ForexResult | null> {
 }
 
 // ── Gold historical K-line (Eastmoney) ──
-// secid: 113.GC00Y = COMEX Gold Continuous Futures
+// Primary: 113.GC00Y = COMEX Gold Futures Continuous (USD/oz)
+// Fallback: 116.AU0 = Shanghai Gold Futures Continuous (CNY/gram)
 
-const GOLD_SECID = '113.GC00Y';
+const GOLD_SECID_COMEX = '113.GC00Y';
+const GOLD_SECID_SHFE = '116.AU0';
+
+async function tryFetchKline(secid: string, limit: number): Promise<GoldKlinePoint[]> {
+  const url = `/api/gold/api/qt/stock/kline/get?secid=${secid}&lmt=${limit}`;
+  log.debug(`[fetchGoldKline] trying ${url}`);
+
+  const res = await fetch(url);
+  const json = await res.json() as { rc?: number; data?: { klines?: string[] } };
+  log.debug(`[fetchGoldKline] ${secid} rc=${json?.rc}, hasData=${!!json?.data?.klines}`);
+
+  if (json?.data?.klines) {
+    return json.data.klines
+      .map((line: string) => {
+        const parts = line.split(',');
+        return {
+          date: parts[0],
+          open: parseFloat(parts[1]) || 0,
+          close: parseFloat(parts[2]) || 0,
+          high: parseFloat(parts[3]) || 0,
+          low: parseFloat(parts[4]) || 0,
+        };
+      })
+      .filter(p => p.close > 0);
+  }
+  return [];
+}
 
 export async function fetchGoldKline(limit = 200): Promise<GoldKlinePoint[]> {
-  const cached = getCache(GOLD_SECID);
+  // Check cache for COMEX first
+  const cached = getCache(GOLD_SECID_COMEX);
   if (cached) return cached;
 
   try {
-    const url = `/api/gold/api/qt/stock/kline/get?secid=${GOLD_SECID}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=${limit}`;
-    log.debug(`[fetchGoldKline] requesting ${url}`);
-
-    const res = await fetch(url);
-    const json = await res.json() as { data?: { klines?: string[] } };
-
-    if (json?.data?.klines) {
-      const result: GoldKlinePoint[] = json.data.klines
-        .map((line: string) => {
-          const parts = line.split(',');
-          return {
-            date: parts[0],
-            open: parseFloat(parts[1]) || 0,
-            close: parseFloat(parts[2]) || 0,
-            high: parseFloat(parts[3]) || 0,
-            low: parseFloat(parts[4]) || 0,
-          };
-        })
-        .filter(p => p.close > 0);
-
-      if (result.length > 0) {
-        setCache(GOLD_SECID, result);
-      }
+    // Try COMEX gold futures (USD/oz)
+    let result = await tryFetchKline(GOLD_SECID_COMEX, limit);
+    if (result.length > 0) {
+      setCache(GOLD_SECID_COMEX, result);
       return result;
     }
-    return [];
+
+    // Fallback: Shanghai gold futures (CNY/gram)
+    const shfeCache = getCache(GOLD_SECID_SHFE);
+    if (shfeCache) return shfeCache;
+
+    result = await tryFetchKline(GOLD_SECID_SHFE, limit);
+    if (result.length > 0) {
+      setCache(GOLD_SECID_SHFE, result);
+    }
+    return result;
   } catch {
     log.warn('[fetchGoldKline] failed');
-    // Return cached data as fallback even if expired
     return cached ?? [];
   }
 }

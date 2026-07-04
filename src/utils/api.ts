@@ -764,7 +764,7 @@ export async function fetchStockList(): Promise<StockListItem[]> {
   try {
     const params = new URLSearchParams({
       fid: 'f3', po: '1', pz: '5000', pn: '1', np: '1',
-      fltt: '2', invt: '2', fs: 'm:0+t:6,m:0+t:80', fields: 'f12,f14',
+      fltt: '2', invt: '2', fs: 'm:0+t:6,m:0+t:80,m:1+t:2', fields: 'f12,f14',
     });
     const url = `/api/benchmark/api/qt/clist/get?${params.toString()}`;
     const res = await fetch(url);
